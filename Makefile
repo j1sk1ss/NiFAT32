@@ -1,7 +1,7 @@
 CFLAGS = -fPIC -shared -nostdlib -nodefaultlibs -Iinclude
 # Errors
 CFLAGS += -Wall -Wextra -Wcomment
-CC = gcc-14
+CC = gcc
 
 # Logger flags
 ERROR_LOGS ?= 0

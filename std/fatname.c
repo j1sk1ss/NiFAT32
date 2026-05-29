@@ -70,7 +70,7 @@ int nft32_path_to_fatnames(const char* path, char* fatnames) {
     nft32_str_strcpy(fatnames, path);
 
     int i;
-    for (i = nft32_str_strlen(path); path[i] != PATH_SPLITTER && i >= 0; i--);
+    for (i = nft32_str_strlen(path); path[i] != PATH_SPLITTER && i > 0; i--);
     i++;
     
     nft32_name_to_fatname(path + i, fatnames + i);

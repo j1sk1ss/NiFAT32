@@ -76,11 +76,11 @@ int NIFAT32_init(nifat32_params_t* params) {
 
     int root_dir_sectors = ((bootstruct.root_entry_count * 32) + (bootstruct.bytes_per_sector - 1)) / bootstruct.bytes_per_sector;
     int data_sectors = _fs_data.total_sectors - (bootstruct.reserved_sector_count + (bootstruct.table_count * _fs_data.fat_size) + root_dir_sectors);
-    if (!data_sectors || !bootstruct.sectors_per_cluster) {
-        _fs_data.total_clusters = bootstruct.total_sectors_32 / bootstruct.sectors_per_cluster;
+    if (!data_sectors) {
+        _fs_data.total_clusters = bootstruct.total_sectors_32 / (!bootstruct.sectors_per_cluster ? 1 : bootstruct.sectors_per_cluster);
     }
     else {
-        _fs_data.total_clusters = data_sectors / bootstruct.sectors_per_cluster;
+        _fs_data.total_clusters = data_sectors / (!bootstruct.sectors_per_cluster ? 1 : bootstruct.sectors_per_cluster);
     }
 
     _fs_data.first_data_sector   = bootstruct.reserved_sector_count + bootstruct.table_count * bootstruct.extended_section.table_size_32;
@@ -491,10 +491,11 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size) {
             }
             else {
                 if (start_ca == FAT_CLUSTER_BAD) start_ca = ca;
-                if ((size -= _fs_data.cluster_size) < 0 && end_ca == FAT_CLUSTER_BAD) {
-                    set_cluster_end(ca, &_fs_data);
-                    end_ca = ca;
-                }
+                if (
+                    (size -= _fs_data.cluster_size) < 0 && 
+                    end_ca == FAT_CLUSTER_BAD           &&
+                    set_cluster_end(ca, &_fs_data)
+                ) end_ca = ca;
             }
         }
 

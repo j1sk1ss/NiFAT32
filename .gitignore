@@ -9,3 +9,4 @@ test/efficiency/Cargo.toml
 test/efficiency/target/
 test/efficiency/Cargo.lock
 *.dSYM
+.svace-dir
