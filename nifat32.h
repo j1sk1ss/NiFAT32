@@ -134,9 +134,16 @@ int NIFAT32_init(nifat32_params_t* params);
 Restore bootsectors on mount image.
 Note: Will create a new bootsector from current info from RAM. 
 Note 2: This function will rewrite all existed copies on image.
-Return 1.
+Returns 1.
 */
 int NIFAT32_repair_bootsectors();
+
+/*
+Restore file allocation table and all its copies with majority voting approach.
+Won't delete the data, but also won't work if there is too many errors in a table.
+Returns 1.
+*/
+int NIFAT32_repair_fat();
 
 /*
 Unload sequence. Perform all cleanup tasks.

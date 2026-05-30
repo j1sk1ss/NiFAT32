@@ -144,6 +144,7 @@ int NIFAT32_init(nifat32_params_t* params) {
 }
 
 int NIFAT32_repair_bootsectors() {
+    print_log("NIFAT32_repair_bootsectors()");
     nifat32_bootsector_t bs = { .bootjmp = { 0xEB, 0x5B, 0x9 }, .media_type = 0xF8, .sectors_per_track = 63, .head_side_count = 255 };
     nft32_str_memcpy(bs.oem_name, "recover ", 8);
     bs.bytes_per_sector      = _fs_data.bytes_per_sector;
@@ -171,6 +172,11 @@ int NIFAT32_repair_bootsectors() {
     }
     
     return 1;
+}
+
+int NIFAT32_repair_fat() {
+    print_log("NIFAT32_repair_fat()");
+    return fat_repair(&_fs_data);
 }
 
 /*

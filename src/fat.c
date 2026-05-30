@@ -45,6 +45,14 @@ int fat_cache_unload() {
     return 1;
 }
 
+int fat_repair(fat_data_t* fi) {
+    for (cluster_addr_t ca = 0; ca < fi->total_clusters; ca++) {
+        (void)read_fat(ca, fi);
+    }
+
+    return 1;
+}
+
 #ifndef NIFAT32_RO
 static int __write_fat__(cluster_addr_t ca, cluster_status_t value, fat_data_t* fi, int fat) {
     cluster_offset_t fat_offset = ca * sizeof(cluster_val_t) * sizeof(encoded_t);

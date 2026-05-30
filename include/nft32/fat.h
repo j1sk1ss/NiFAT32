@@ -77,6 +77,15 @@ Return 0 if cache was NULL.
 int fat_cache_unload();
 
 /*
+Iterate entire FAT and repair it with majority voting approach.
+Params:
+    - fi - FS info.
+
+Always returns 1.
+*/
+int fat_repair(fat_data_t* fi);
+
+/*
 Read 4 bytes from FAT for target cluster.
 Note: Will read data from all copies. Return most freq. data.
 Note 2: Fix bit-errors if major voting works correct.
