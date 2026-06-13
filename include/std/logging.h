@@ -76,6 +76,13 @@ typedef struct {
     #define print_spec(message, ...)    (void)0
 #endif
 
+#if !defined(ERROR_LOGS)        && !defined(WARNING_LOGS) &&       \
+    !defined(INFO_LOGS)         && !defined(DEBUG_LOGS) &&         \
+    !defined(IO_OPERATION_LOGS) && !defined(MEM_OPERATION_LOGS) && \
+    !defined(LOGGING_LOGS)      && !defined(SPECIAL_LOGS)
+    #define NO_LOGGING
+#endif 
+
 /*
 Logging init.
 Params:
