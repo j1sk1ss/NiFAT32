@@ -54,16 +54,6 @@ Return 1.
 int nft32_path_to_fatnames(const char* path, char* fatnames);
 
 /*
-Convert path to 8.3 in one memory.
-Example: root/tdir/dir2/name.ext to ROOT/TDIR/DIR2/NAME    EXT
-Params:
-- path - Source path.
-
-Return 1.
-*/
-int nft32_path_to_83(char* path);
-
-/*
 Extract file name from path. 
 Example: root/tdir/file.txt, name=file.txt
          Note: Same for 8.3 path

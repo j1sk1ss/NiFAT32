@@ -1,517 +1,744 @@
 # NiFAT32
-The NiFAT32 project is FAT32 file system with a modification which improves overall performance under SEU (Single Event Upset) and MEU (Multiple Event Upsets). This project can be used as a library, as an independent executable and as a system for an IoT device. 
 
-## Navigation
-- [Easy start (Library)](#easy-start-library)
-  - [Initialization](#initialization)
-  - [Open a content entry](#open-a-content-entry)
-  - [Create a new content entry](#create-a-new-content-entry)
-  - [Edit a content entry](#edit-a-content-entry)
-  - [Write a content entry](#write-a-content-entry)
-  - [Read a content entry](#read-a-content-entry)
-  - [Get content information](#get-content-information)
-  - [Truncate a content entry](#truncate-a-content-entry)
-  - [Index a directory](#index-a-directory)
-  - [Copy a content entry](#copy-a-content-entry)
-  - [Delete a content entry](#delete-a-content-entry)
-  - [Repair operations](#repair-operations)
-  - [File system information and errors](#file-system-information-and-errors)
-  - [Closing file system](#closing-file-system)
-- [Helpers](#helpers)
-  - [FAT names](#fat-names)
-- [Porting to IoT platforms](#porting-to-iot-platforms)
-  - [What should be copied](#what-should-be-copied)
-  - [What should be provided by platform](#what-should-be-provided-by-platform)
-  - [Memory manager](#memory-manager)
-  - [Image creation](#image-creation)
-  - [Recommended compile flags](#recommended-compile-flags)
-- [Build](#build)
-  - [Library](#library)
-  - [Formatter](#formatter)
-  - [Unix executable](#unix-executable)
-- [Testing](#testing)
-- [Features](#features)
+NiFAT32 is a FAT32-like filesystem designed to tolerate single-event and multiple-event upsets. It protects boot sectors, FAT entries, directory entries, journals, and persistent error records with redundant copies, checksums, voting, and Hamming encoding.
 
-## Easy start (Library)
-### Initialization
-To load a NiFAT32 instance you will need to invoke the `NIFAT32_init()` function with boot parameters:
+NiFAT32 is not wire-compatible with a regular FAT32 implementation. Images must be accessed through this library or compatible firmware.
+
+## Reference Footprint
+
+The following measurements were produced on Fedora Linux x86-64 with GCC 15.2.1 and GNU Binutils 2.45.1.
+
+### Flag Impact
+
+Each row below adds or changes only the option shown, while retaining the configuration from the previous row. This makes the effect of individual build choices visible.
+
+All rows use `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections`.
+
+| Step | Added or changed option | ROM | ROM change | Static RAM | RAM change | Stripped ELF |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | Default `-O2` build | 41.2 KiB | - | 505.2 KiB | - | 47.1 KiB |
+| 2 | `NIFAT32_RO=1` | 32.5 KiB | -8.7 KiB | 505.1 KiB | -0.1 KiB | 39.0 KiB |
+| 3 | `NO_HEAP=1` | 32.5 KiB | 0.0 KiB | 505.1 KiB | 0.0 KiB | 39.0 KiB |
+| 4 | `NO_DEFAULT_MM_MANAGER=1` | 32.0 KiB | -0.5 KiB | 5.1 KiB | -500.0 KiB | 39.0 KiB |
+| 5 | `NIFAT32_NO_ERROR=1` | 30.8 KiB | -1.2 KiB | 5.0 KiB | -0.1 KiB | 39.0 KiB |
+| 6 | `NO_ENTRY_VALIDATION=1` | 30.7 KiB | -0.1 KiB | 5.0 KiB | 0.0 KiB | 39.0 KiB |
+| 7 | `CONTENT_TABLE_SIZE=8 IO_THREADS_MAX=4` | 30.4 KiB | -0.3 KiB | 1.8 KiB | -3.2 KiB | 38.7 KiB |
+| 8 | `CONTENT_TABLE_SIZE=1 IO_THREADS_MAX=1` | 29.9 KiB | -0.5 KiB | 1.3 KiB | -0.5 KiB | 38.7 KiB |
+| 9 | Explicit `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` | 24.0 KiB | -5.8 KiB | 1.3 KiB | less than -0.1 KiB | 30.6 KiB |
+| 10 | Change `-O2` to `-Os` | 20.7 KiB | -3.4 KiB | 1.2 KiB | less than -0.1 KiB | 26.6 KiB |
+| 11 | Change `-Os` to `-Oz` | 20.4 KiB | -0.3 KiB | 1.2 KiB | 0.0 KiB | 26.6 KiB |
+| 12 | Add `-flto` to compile and link flags | **20.3 KiB** | less than -0.1 KiB | **1.3 KiB** | less than +0.1 KiB | 26.6 KiB |
+
+The exact minimum measured values are 20,809 bytes of `text + data` and 1,308 bytes of `data + bss`. LTO reduced ROM by another 36 bytes, although the rounded KiB value remains almost unchanged.
+
+`NO_HEAP=1` is intended to imply the three cache-disabling macros, but those derived definitions currently live in `nifat32.h` and do not propagate to the separately compiled `src/*.c` translation units. This is why step 3 has no measurable effect in the root Makefile build and why step 9 passes the three flags explicitly. Likewise, the large RAM reduction in step 4 comes specifically from `NO_DEFAULT_MM_MANAGER=1`.
+
+### Maximum Profile
+
+For comparison, enabling every logging group with debug-friendly optimization produces:
+
+| Profile | Configuration | ROM | Static RAM | ELF file | Stripped ELF |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Maximum feature/debug profile | `-O0 -g3`, all `*_LOGS=1`, default features and numeric limits | **63.9 KiB** | **505.2 KiB** | 164.6 KiB | 71.1 KiB |
+
+Minimum measured build:
+
+```bash
+make shared \
+  BUILD_DIR=builds/minimum \
+  CFLAGS="-Oz -flto -ffunction-sections -fdata-sections" \
+  LDFLAGS="-flto -Wl,--gc-sections" \
+  NIFAT32_RO=1 \
+  NO_HEAP=1 \
+  NO_DEFAULT_MM_MANAGER=1 \
+  NIFAT32_NO_ECACHE=1 \
+  NO_FAT_CACHE=1 \
+  NO_FAT_MAP=1 \
+  NIFAT32_NO_ERROR=1 \
+  NO_ENTRY_VALIDATION=1 \
+  CONTENT_TABLE_SIZE=1 \
+  IO_THREADS_MAX=1
+```
+
+Maximum feature/debug build:
+
+```bash
+make shared \
+  BUILD_DIR=builds/maximum \
+  CFLAGS="-O0 -g3" \
+  ERROR_LOGS=1 WARN_LOGS=1 INFO_LOGS=1 DEBUG_LOGS=1 \
+  IO_LOGS=1 MEM_LOGS=1 LOGGING_LOGS=1 SPECIAL_LOGS=1
+```
+
+The minimum profile preserves the public API but is intentionally limited: storage mutations are no-ops, only one content index can be open, only one I/O area can be locked, and allocator memory must be supplied by the platform. The maximum row means the largest tested feature/debug build with default numeric limits; `ALLOC_BUFFER_SIZE` can be increased separately and would make static RAM arbitrarily larger.
+
+`ROM estimate` is `text + data`, while `Static RAM` is `data + bss`, as
+reported by:
+
+```bash
+size builds/nifat32.so
+cp builds/nifat32.so builds/nifat32.stripped.so
+strip --strip-unneeded builds/nifat32.stripped.so
+```
+
+These numbers do not include thread stacks, temporary stack buffers, or memory supplied by a custom allocator. With the built-in allocator, its entire pool is counted in `.bss` even when only part of it is used at runtime. The default static RAM is therefore dominated by the 500 KiB `ALLOC_BUFFER_SIZE`. For the current root build, pass `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` explicitly to disable heap-backed caches, and use a smaller `ALLOC_BUFFER_SIZE` or `NO_DEFAULT_MM_MANAGER=1` to remove the large built-in pool.
+
+Stripping removes symbol and relocation metadata from the ELF file, but does not reduce the loaded `text`, `data`, or `bss` sections shown by `size`. `-O2` provides a middle ground between speed and size. `-O3` produced larger code in this project. GCC `-Oz` with LTO produced the smallest measured ROM; use `-Os` instead when the target compiler does not support `-Oz`.
+
+## Building
+
+The root Makefile tracks header dependencies and rebuilds objects when build options change.
+
+```bash
+make                 # builds/nifat32.so
+make static          # builds/nifat32.a
+make unix            # builds/unix_nifat32
+make formatter       # formatter/formatter
+make tools           # formatter and Unix utility
+make clean           # remove root build artifacts
+make distclean       # also clean the formatter
+make help
+```
+
+The usual toolchain variables can be overridden:
+
+```bash
+make CC=clang CFLAGS="-O3" BUILD_DIR=out
+```
+
+`CPPFLAGS`, `CFLAGS`, `LDFLAGS`, and `LDLIBS` may also be supplied or extended by the caller.
+
+### Build Options
+
+Boolean Make variables accept `0` or `1` and default to `0`.
+
+| Make variable | C macro | Effect |
+| --- | --- | --- |
+| `DEBUG` | - | Adds `-O0 -g3` |
+| `NIFAT32_RO` | `NIFAT32_RO` | Compiles storage mutations as successful no-ops |
+| `NO_HEAP` | `NO_HEAP` | Requests entry-cache, FAT-cache, FAT-map, and default-allocator disabling through header macros; pass the explicit flags for the current multi-file build |
+| `NO_DEFAULT_MM_MANAGER` | `NO_DEFAULT_MM_MANAGER` | Removes the built-in static allocator; callbacks must be supplied |
+| `NIFAT32_NO_ERROR` | `NIFAT32_NO_ERROR` | Disables persistent error storage |
+| `NIFAT32_NO_ECACHE` | `NIFAT32_NO_ECACHE` | Disables directory entry indexing |
+| `NO_FAT_CACHE` | `NO_FAT_CACHE` | Disables the in-memory FAT value cache |
+| `NO_FAT_MAP` | `NO_FAT_MAP` | Disables the free-cluster bitmap |
+| `NO_ENTRY_VALIDATION` | `NO_ENTRY_VALIDATION` | Skips directory-entry checksum validation |
+
+Numeric configuration variables:
+
+| Make variable | C macro | Default | Effect |
+| --- | --- | --- | --- |
+| `ALLOC_BUFFER_SIZE` | `ALLOC_BUFFER_SIZE` | `512000` | Built-in allocator buffer size in bytes |
+| `CONTENT_TABLE_SIZE` | `CONTENT_TABLE_SIZE` | `50` | Maximum number of simultaneously open content entries |
+| `IO_THREADS_MAX` | `IO_THREADS_MAX` | `25` | Maximum number of tracked I/O lock areas |
+
+`NO_HEAP=1` defines `NIFAT32_NO_ECACHE`, `NO_FAT_CACHE`, and `NO_FAT_MAP` inside `nifat32.h`. `NON_DEFAULT_MM_MANAGER` is still accepted by the source as a legacy alias, but new builds should use `NO_DEFAULT_MM_MANAGER`.
+
+Examples:
+
+```bash
+make NIFAT32_RO=1 NO_HEAP=1
+make ALLOC_BUFFER_SIZE=1048576 CONTENT_TABLE_SIZE=100
+make NO_DEFAULT_MM_MANAGER=1
+```
+
+### Logging Options
+
+All log groups are disabled by default. Each Make variable enables the corresponding compile-time macro.
+
+| Make variable | C macro | Log category |
+| --- | --- | --- |
+| `ERROR_LOGS` | `ERROR_LOGS` | Errors |
+| `WARN_LOGS` | `WARNING_LOGS` | Warnings |
+| `INFO_LOGS` | `INFO_LOGS` | General information |
+| `DEBUG_LOGS` | `DEBUG_LOGS` | Debug messages |
+| `IO_LOGS` | `IO_OPERATION_LOGS` | Disk operations |
+| `MEM_LOGS` | `MEM_OPERATION_LOGS` | Allocator operations |
+| `LOGGING_LOGS` | `LOGGING_LOGS` | Public API calls |
+| `SPECIAL_LOGS` | `SPECIAL_LOGS` | Special-purpose diagnostics |
+
+```bash
+make ERROR_LOGS=1 WARN_LOGS=1 INFO_LOGS=1
+make DEBUG=1 DEBUG_LOGS=1 IO_LOGS=1
+```
+
+Enabled logging also requires valid logging callbacks in
+`nifat32_params_t`. Passing `NULL` callbacks disables output at runtime.
+
+## Creating an Image
+
+Build and run the formatter:
+
+```bash
+make formatter
+./formatter/formatter -o nifat32.img
+```
+
+Create a 128 MB image and populate it from `data/`:
+
+```bash
+./formatter/formatter \
+  -o nifat32.img \
+  -s data \
+  --volume-size 128 \
+  --spc 8 \
+  --fc 4 \
+  --bsbc 5 \
+  --b-bsbc 0 \
+  --jc 2
+```
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-o PATH` | Output image; existing files are overwritten | Required |
+| `-s PATH` | Source directory copied recursively into the image | Empty image |
+| `--volume-size N` | Image size in MB | `64` |
+| `--spc N` | Sectors per cluster | `8` |
+| `--fc N` | FAT copy count | `4` |
+| `--bsbc N` | Boot sector copy count | `5` |
+| `--b-bsbc N` | Deliberately damaged boot sector copies for tests | `0` |
+| `--jc N` | Journal sector count | `2` |
+
+The formatter creates a raw filesystem starting at sector zero, without an
+MBR or GPT. See [`formatter/README.md`](formatter/README.md) for SD card
+instructions and safety notes.
+
+## Initialization
+
+Include the public header:
+
 ```c
-nifat32_params_t params;
-if (!NIFAT32_init(&params)) {
-    return EXIT_FAILURE;
+#include "nifat32.h"
+```
+
+NiFAT32 does not perform POSIX I/O itself. The platform supplies sector I/O,
+logging, and optionally memory callbacks.
+
+```c
+static int read_sector(
+    sector_addr_t sector,
+    sector_offset_t offset,
+    unsigned char *buffer,
+    int size
+) {
+    /* Read size bytes from sector * SECTOR_SIZE + offset. */
+    return 1;
+}
+
+static int write_sector(
+    sector_addr_t sector,
+    sector_offset_t offset,
+    const unsigned char *data,
+    int size
+) {
+    /* Write size bytes to sector * SECTOR_SIZE + offset. */
+    return 1;
 }
 ```
 
-Parameters are the next:
-| Parameter | Full name | Possible values |
-|-|-|-|
-| fat_cache | Status for the FAT cache system | <b>NO_CACHE</b> (There is no FAT cache), </br> <b>CACHE</b> (There is a classic 'lazy' (on load) cache), </br> <b>CACHE + HARD_CACHE</b> (There is a cache which will load entire table at the start) |
-| bs_num | Boot sectors number (Service field, do not change) | 0 | 
-| bs_count | Boot sectors count | >= 1 |
-| ts | Total sectors count in the image (You can get this value by dividing the total size of the image in bytes with the sector size in bytes) | >= 1 |
-| jc | Journal sectors count | >= 0 |
-| ec | Error storage sectors count | >= 0 |
-| disk_io | Disk IO function pointers | - |
-| logg_io | Logging IO function pointers | - |
-
-### Open a content entry
-NiFAT32 names directories and files as content entries. To open an existed content you will need to invoke the `NIFAT32_open_content` function with the `root_ci` parameter (Can be `NO_RCI`) which represents the content index where we're searching the content (If it receives the `NO_RCI` value, it will search in the entire image). Also you will need to get a name of the target content (or a path) and set a mode. There are several modes in the system:
-
-| Parameter | Description |
-|-|-|
-| DF_MODE | Will open a content in Read + Write mode |
-| R_MODE | Will open a content only in Read mode |
-| W_MODE | Will open a content only in Write mode |
-| CR_MODE | Will tell to the system that we need to create all content entries that don't exist. <br> This mode is used with NO_TARGET, FILE_TARGET and DIR_TARGET options. This will say which type is the last part in the path ('cause we can't say there is a directory or a file at the path's tale). |
-
-Let's open the `hello.txt` that is present in the `dir` directory. To accomplish this, we can either use the full path, or open the directory first. The second approach is usefull if a directory is placed deep in the file system, and we use it really often.
-```c
-ci_t ci = NIFAT32_open_content(NO_RCI, "DIR/HELLO   TXT", MODE(R_MODE, NO_TARGET)); // The last name in the path *must* be in the 8.3 format! Use in-built helpers to achive this.
-if (ci >= 0) {
-    // The target file (Read-only) is opened with the `ci` index.
-}
-```
-
-### Create a new content entry
-To create a new content entry, you will need to use the `NIFAT32_put_content`. This function accepts the `root_ci` (Root content index, something like the file descriptor), content information (see the table below), and reserce cluster count. </br>
-Content information is a structure that is presented below:
-| Parameter | Full name | Possible values |
-|-|-|-|
-| full_name | All 11 characters (Name + Extention) | A string from 0 bytes length to 11 bytes length. |
-| name | First 8 bytes from the name (Optional for creation) | A string from 0 bytes length to 8 bytes length. |
-| extention | Last 3 bytes from the name (Optional for creation) | A string from 0 bytes length to 3 bytes length. |
-| size | Content size (For directories always 0) | >= 0 |
-| type | Content entry type | <b>STAT_FILE</b> - content is a file </br> <b>STAT_DIR</b> - content is a directory |
-
-The `root_ci` value sets the destination where the new content will be stored. If there is no directories in the file system instance, this value can be obtained from the opn function with `NO_RCI`. For instance let's make a new directory in an empty file system instance:
-```c
-ci_t rci = NIFAT32_open_content(NO_RCI, NULL, MODE(W_MODE, NO_TARGET));
-if (rci >= 0) {
-    cinfo_t info = { .type = STAT_DIR, .full_name = "TDIR       " };
-    NIFAT32_put_content(rci, &info, NO_RESERVE);
-    NIFAT32_close_content(rci);
-}
-```
-
-There is a less complex way of how to create a file or a directory. The `NIFAT32_open_content` as it mentioned above can create all non-existed files/directories with the `CR_MODE` flag. In a nutshell the code above can be re-written:
-```c
-ci_t new_directory = NIFAT32_open_content(NO_RCI, "TDIR       ", MODE(CR_MODE | R_MODE | W_MODE, DIR_TARGET));
-if (new_directory >= 0) {
-    // The directory is created and opened with the `new_directory` index.
-}
-```
-
-P.S.: *One flaw in the second approach is that we can't set the reserved count of clusters. The `NIFAT32_put_content` function can pre-allocate a chain for data which can help with de-fragmentation in future.*
-
-### Edit a content entry
-To perform this operation you will need to invoke the `NIFAT32_change_meta` function which accepts the `ci` of the target content and a new information (cinfo_t). Let's rename the directory above and change its type to file.
-```c
-// ci_t new_directory = ...
-cinfo_t info = { .full_name = "TFILE   TXT", .size = 1, .type = STAT_FILE };
-NIFAT32_change_meta(new_directory, &info);
-```
-
-### Write a content entry
-To write a data to a content entry, you need to use the `NIFAT32_write_buffer2content` function which accepts the content index of a content entry, offset, the data and size of the data.
-```c
-// ci_t new_directory = ... (now this is tfile.txt)
-if (NIFAT32_write_buffer2content(new_directory, 0, "Hello world!", 12) == 12) {
-}
-```
-
-### Read a content entry
-To read a data from a content entry, you need to use the `NIFAT32_read_content2buffer` function which accepts the content index of a content entry, offset, the output buffer and size of the output buffer.
-```c
-char buffer[64];
-// ci_t new_directory = ... (now this is tfile.txt)
-if (NIFAT32_read_content2buffer(new_directory, 0, buffer, sizeof(buffer)) == 12) {
-}
-```
-
-### Get content information
-To get a content meta information you will need to use the `NIFAT32_stat_content` function. It accepts the content index and fills the `cinfo_t` structure.
-```c
-// ci_t new_directory = ... (now this is tfile.txt)
-cinfo_t stat;
-if (NIFAT32_stat_content(new_directory, &stat)) {
-    // stat.full_name contains 8.3 name
-    // stat.size contains a content size
-    // stat.type can be STAT_FILE or STAT_DIR
-}
-```
-
-### Truncate a content entry
-The `NIFAT32_truncate_content` function changes the occupied size of a file and saves data in the result clusters. The content entry should be opened in Write mode.
-```c
-// ci_t new_directory = ... (now this is tfile.txt)
-if (NIFAT32_truncate_content(new_directory, 0, 6)) {
-    // The file was truncated to 6 bytes.
-}
-```
-
-### Index a directory
-NiFAT32 can index a directory to improve search speed. This is usefull for big directories where the same directory is used many times. To perform this operation, use the `NIFAT32_index_content` function.
-```c
-ci_t dir = NIFAT32_open_content(NO_RCI, "TDIR       ", DF_MODE);
-if (dir >= 0) {
-    NIFAT32_index_content(dir);
-    NIFAT32_close_content(dir);
-}
-```
-
-### Copy a content entry
-The NiFAT32 file system can create a shallow copy of a content or a deep copy. The shallow copy addresses the problem of backup meta information in terms of SEU presents, that's why I strongly suggest to use it for your files if your system will encounter SEU. To perform this you will need to invoke the `NIFAT32_copy_content` which accepts target and source content indexes (You will need to create a dummy placeholder for a copy) and copy type (`DEEP_COPY` or `SHALLOW_COPY`).
-```c
-// ci_t new_directory = ... (now this is tfile.txt)
-ci_t copy = NIFAT32_open_content(NO_RCI, "TDIR       ", MODE(CR_MODE | R_MODE | W_MODE, DIR_TARGET));
-if (copy >= 0) {
-    NIFAT32_copy_content(new_directory, copy, SHALLOW_COPY);
-}
-```
-
-### Delete a content entry
-To delete a content entry (and erase all data, which means delete data in files and delete files and directories recursively in directories) you will need to use the `NIFAT32_delete_content` function. This function accepts only one parameter - content index. 
-```c
-// ci_t new_directory = ... (now this is tfile.txt)
-NIFAT32_delete_content(copy);
-NIFAT32_delete_content(new_directory);
-```
-
-### Repair operations
-NiFAT32 stores important structures with noise-immune encoding and checksum validation. For manual restoration there are two public functions:
-
-| Function | Description |
-|-|-|
-| NIFAT32_repair_bootsectors | Rebuilds and rewrites all bootsector copies from information which is already loaded in RAM. |
-| NIFAT32_repair_content | Reads, corrects and writes directory entries inside a directory content. Can work recursively. |
-
-Example:
-```c
-ci_t root = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
-if (root >= 0) {
-    NIFAT32_repair_content(root, 1);
-    NIFAT32_close_content(root);
-}
-
-NIFAT32_repair_bootsectors();
-```
-
-### File system information and errors
-To get loaded file system information, use the `NIFAT32_get_fs_data` function. The output structure contains sector size, cluster size, FAT count, FAT size, root cluster, journals count and other base values.
-```c
-fat_data_t fs;
-if (NIFAT32_get_fs_data(&fs)) {
-    // fs.cluster_size is bytes_per_sector * sectors_per_cluster
-}
-```
-
-The last registered error can be requested with `NIFAT32_get_last_error`. If there is no registered error, the function will return `-1`.
-```c
-error_code_t code = NIFAT32_get_last_error();
-if (code >= 0) {
-    // Handle or print the error code.
-}
-```
-
-### Closing file system
-When you don't need the current NiFAT32 instance anymore, invoke `NIFAT32_unload`. This function unloads FAT cache and destroys the content table.
-```c
-NIFAT32_unload();
-```
-
-## Helpers
-### FAT names
-NiFAT32 works with FAT 8.3 names internally. If you have a regular name or a path, you can convert it with helpers from `std/fatname.h`.
-
-| Function | Example |
-|-|-|
-| nft32_name_to_fatname | `hello.txt` -> `HELLO   TXT` |
-| nft32_fatname_to_name | `HELLO   TXT` -> `HELLO.TXT` |
-| nft32_path_to_fatnames | `root/dir/file.txt` -> `ROOT/DIR/FILE    TXT` |
-| nft32_path_to_83 | Converts a path to 8.3 in the same memory. |
-| nft32_extract_name | Extracts the last name from a path. |
-| unpack_83_name | Splits `NAME    EXT` to name and extention. |
-
-Example:
-```c
-char fat_path[128] = { 0 };
-nft32_path_to_fatnames("root/dir/hello.txt", fat_path);
-
-ci_t ci = NIFAT32_open_content(NO_RCI, fat_path, DF_MODE);
-```
-
-## Porting to IoT platforms
-NiFAT32 doesn't use POSIX or Unix calls inside the core library directly. The platform-dependent part is passed through `nifat32_params_t`, so for a microcontroller or another IoT platform you need to copy the core files and provide several small functions for storage, logging and memory.
-
-### What should be copied
-For a minimal port you need the next files and folders:
-
-| Path | Description |
-|-|-|
-| nifat32.c | Main public API implementation. |
-| nifat32.h | Main public API header. |
-| src/ | Core FAT, cluster, entry, journal, cache and error-storage logic. |
-| std/ | Small standard helpers used by the file system. |
-| include/ | Public and internal headers for `src/` and `std/`. |
-
-The next files are optional for the target platform:
-
-| Path | Description |
-|-|-|
-| formatter/ | Host-side image creation tool. Usually built on PC before flashing/copying an image to device storage. |
-| unix_nifat32.c | Unix example shell above the API. It is useful as a reference, but shouldn't be copied to MCU firmware. |
-| test/ | Tests and benchmark tools. |
-| graphs/ | Documentation images and collected results. |
-
-### What should be provided by platform
-The platform should provide disk IO functions. These functions work with logical sectors. The `sa` parameter is a sector address, `offset` is an offset inside this sector, and `buff_size` / `data_size` is a count of bytes.
-
-```c
-static int my_read_sector(sector_addr_t sa, sector_offset_t offset, buffer_t buffer, int buff_size) {
-    // Read buff_size bytes from storage address: sa * SECTOR_SIZE + offset.
-    // Return 1 if read was success, otherwise return 0.
-}
-
-static int my_write_sector(sector_addr_t sa, sector_offset_t offset, const_buffer_t data, int data_size) {
-    // Write data_size bytes to storage address: sa * SECTOR_SIZE + offset.
-    // Return 1 if write was success, otherwise return 0.
-}
-```
-
-Logging is optional. If you don't need logs, you can pass `NULL` callbacks and disable log flags during build.
-
-```c
-static int my_fprintf(const char* fmt, ...) {
-    // Print to UART/SWO/RTT or ignore.
-}
-
-static int my_vfprintf(const char* fmt, va_list args) {
-    // Print to UART/SWO/RTT or ignore.
-}
-```
-
-After that, fill `nifat32_params_t` with platform values:
+Both callbacks return nonzero on success and zero on failure.
 
 ```c
 #define SECTOR_SIZE 512
-#define IMAGE_SIZE_BYTES (64 * 1024 * 1024)
+#define IMAGE_SIZE_BYTES (64u * 1024u * 1024u)
 
 nifat32_params_t params = {
-    .bs_num    = 0,
-    .bs_count  = 5,
-    .ts        = IMAGE_SIZE_BYTES / SECTOR_SIZE,
-    .jc        = 2,
-    .ec        = 0,
     .fat_cache = CACHE,
-    .disk_io   = {
-        .read_sector  = my_read_sector,
-        .write_sector = my_write_sector,
-        .sector_size  = SECTOR_SIZE
+    .bs_num = 0,
+    .bs_count = 5,
+    .ts = IMAGE_SIZE_BYTES / SECTOR_SIZE,
+    .jc = 2,
+    .ec = 1,
+    .disk_io = {
+        .read_sector = read_sector,
+        .write_sector = write_sector,
+        .sector_size = SECTOR_SIZE
     },
-    .logg_io   = {
-        .fd_fprintf  = my_fprintf,
-        .fd_vfprintf = my_vfprintf
+    .logg_io = {
+        .fd_fprintf = NULL,
+        .fd_vfprintf = NULL
     },
     .mm_manager = { DEFAULT_MM_MANAGER }
 };
 
 if (!NIFAT32_init(&params)) {
-    // Mount error.
+    /* Mount failed. */
 }
 ```
 
-P.S.: *The `bs_count`, `ts`, `jc`, sector size and FAT count should match the image that was created by the formatter.*
+### Mount Parameters
 
-### Memory manager
-By default NiFAT32 uses a small static memory manager from `std/mm.c`. Its buffer size can be changed with `ALLOC_BUFFER_SIZE`.
+| Field | Meaning |
+| --- | --- |
+| `fat_cache` | Bit mask made from `NO_CACHE`, `CACHE`, `HARD_CACHE`, and `MAP_CACHE` |
+| `bs_num` | First boot sector copy to try; normally `0` |
+| `bs_count` | Number of boot sector copies created by `--bsbc` |
+| `ts` | Total logical sectors in the image |
+| `jc` | Journal copy count created by `--jc` |
+| `ec` | Persistent error-storage copy count; use `0` to disable at runtime |
+| `disk_io` | Sector read/write callbacks and logical sector size |
+| `logg_io` | Optional `fprintf`-like and `vfprintf`-like callbacks |
+| `mm_manager` | Allocator callbacks or `DEFAULT_MM_MANAGER` |
 
-```bash
-make ALLOC_BUFFER_SIZE=262144
-```
+`NIFAT32_init()` increments `bs_num` while trying damaged boot sector copies, so the structure may be modified after a failed or recovered mount.
 
-If your platform already has a heap, RTOS allocator or a region allocator, you can provide your own memory manager and build without the default one:
+Cache modes must be combined with `CACHE`:
+
+| Value | Behavior |
+| --- | --- |
+| `NO_CACHE` | Read FAT values from storage |
+| `CACHE` | Allocate a lazy FAT cache |
+| `CACHE \| HARD_CACHE` | Load the complete FAT into the cache during mount |
+| `CACHE \| MAP_CACHE` | Allocate a free-cluster bitmap |
+| `CACHE \| HARD_CACHE \| MAP_CACHE` | Enable both full loading and the bitmap |
+
+The image geometry and mount parameters must agree. In particular,
+`bs_count`, `ts`, `jc`, `ec`, and `sector_size` must describe the formatted
+image. FAT count and sectors per cluster are read from the boot sector.
+
+### Custom Memory Manager
+
+The callback signatures are:
 
 ```c
-static int my_mm_init() {
-    return 1;
-}
+static int mm_init(void);
+static void *mm_alloc(unsigned long size);
+static void mm_free(void *ptr);
+```
 
-static void* my_malloc(unsigned int size) {
-    // Return a memory block or NULL.
-}
+Configure and build:
 
-static int my_free(void* ptr) {
-    // Free memory and return 1 if success.
-}
-
+```c
 nifat32_params_t params = {
-    // ...
+    /* ... */
     .mm_manager = {
-        .init   = my_mm_init,
-        .malloc = my_malloc,
-        .free   = my_free
+        .init = mm_init,
+        .malloc = mm_alloc,
+        .free = mm_free
     }
 };
 ```
 
-Build flag:
 ```bash
 make NO_DEFAULT_MM_MANAGER=1
 ```
 
-### Image creation
-The common way for IoT usage is to create an image on the host machine and then put it to the target storage (SD card, SPI flash, QSPI flash, eMMC and so on).
+When using the built-in manager, `{ DEFAULT_MM_MANAGER }` selects its static buffer. Increase `ALLOC_BUFFER_SIZE` when FAT caching or directory indexes need more memory.
 
-```bash
-cd formatter
-make
-./formatter -o ../nifat32.img --volume-size 64 --spc 8 --fc 4 --bsbc 5 --jc 2
+## Names and Open Modes
+
+NiFAT32 stores and accepts names in uppercase FAT 8.3 form. Convert regular
+names and paths before passing them to the public API.
+
+```c
+char path[128] = { 0 };
+nft32_path_to_fatnames("root/dir/hello.txt", path);
+/* path is now ROOT/DIR/HELLO   TXT */
 ```
 
-If you need initial files in the image, pass a source folder:
-```bash
-./formatter -o ../nifat32.img -s ../data --volume-size 64 --spc 8 --fc 4 --bsbc 5 --jc 2
+Available helpers from `std/fatname.h`:
+
+| Function | Purpose |
+| --- | --- |
+| `nft32_name_to_fatname` | Convert `hello.txt` to `HELLO   TXT` |
+| `nft32_fatname_to_name` | Convert `HELLO   TXT` to a regular name |
+| `nft32_path_to_fatnames` | Convert a path to the NiFAT32 path form |
+| `nft32_extract_name` | Extract the final path component |
+| `unpack_83_name` | Split an 11-byte FAT name into name and extension |
+
+Open modes:
+
+| Flag | Meaning |
+| --- | --- |
+| `R_MODE` | Permit reads |
+| `W_MODE` | Permit writes |
+| `CR_MODE` | Create missing path components |
+| `NO_TARGET` | No explicit type for the final component |
+| `FILE_TARGET` | Create the final component as a file |
+| `DIR_TARGET` | Create the final component as a directory |
+| `DF_MODE` | `MODE(R_MODE \| W_MODE, NO_TARGET)` |
+
+Use `MODE(access_flags, target)` to pack access and target flags:
+
+```c
+char fat_path[64] = { 0 };
+nft32_path_to_fatnames("root/hello.txt", fat_path);
+
+ci_t file = NIFAT32_open_content(
+    NO_RCI,
+    fat_path,
+    MODE(R_MODE | W_MODE | CR_MODE, FILE_TARGET)
+);
 ```
 
-After image creation write the image to the device storage with your usual flashing tool or storage writer. In firmware use the same geometry values in `nifat32_params_t`.
+`NO_RCI` starts lookup at the filesystem root. Passing an open directory index instead starts lookup relative to that directory. A `NULL` path opens the root directory.
 
-### Recommended compile flags
-For read-only devices, firmware update partitions or images that shouldn't be changed from the target, use:
+## Public API
 
-```bash
-make NIFAT32_RO=1
+All public functions are declared in `nifat32.h`.
+
+### Check if content exists
+
+`NIFAT32_content_exists()` searches from the filesystem root and returns `1` when the path exists.
+
+```c
+char fat_path[64] = { 0 };
+nft32_path_to_fatnames("data/config.bin", fat_path);
+
+if (NIFAT32_content_exists(fat_path)) {
+    // The entry exists and can be opened.
+}
 ```
 
-For small systems I suggest disabling debug and IO logs:
-```bash
-make DEBUG_LOGS=0 IO_LOGS=0 LOGGING_LOGS=0
+### Open content
+
+Open an entry with the required access mode. A nonnegative value is a valid content index.
+
+```c
+char fat_path[64] = { 0 };
+nft32_path_to_fatnames("data/config.bin", fat_path);
+
+ci_t file = NIFAT32_open_content(
+    NO_RCI,
+    fat_path,
+    MODE(R_MODE | W_MODE, FILE_TARGET)
+);
+
+if (file < 0) {
+    // -1 means that the content table is full.
+    // -2 means that the path was not found.
+}
 ```
 
-For platforms with their own allocator:
-```bash
-make NO_DEFAULT_MM_MANAGER=1
+Pass an open directory as `rci` to search relative to it:
+
+```c
+char directory_name[12] = { 0 };
+char file_name[12] = { 0 };
+nft32_name_to_fatname("data", directory_name);
+nft32_name_to_fatname("config.bin", file_name);
+
+ci_t directory = NIFAT32_open_content(NO_RCI, directory_name, DF_MODE);
+
+if (directory >= 0) {
+    ci_t file = NIFAT32_open_content(directory, file_name, DF_MODE);
+    if (file >= 0) NIFAT32_close_content(file);
+    NIFAT32_close_content(directory);
+}
 ```
 
-For platforms with no allocator and a fixed memory budget:
-```bash
-make ALLOC_BUFFER_SIZE=131072
+### Create content
+
+Add `CR_MODE` to create missing path components. Intermediate components are created as directories.
+
+```c
+char fat_path[64] = { 0 };
+nft32_path_to_fatnames("logs/boot.txt", fat_path);
+
+ci_t file = NIFAT32_open_content(
+    NO_RCI,
+    fat_path,
+    MODE(R_MODE | W_MODE | CR_MODE, FILE_TARGET)
+);
+
+if (file >= 0) {
+    // logs/boot.txt now exists and is open.
+}
 ```
 
-## Build
-### Library
-To build the shared library, run:
-```bash
-make
+Use `NIFAT32_put_content()` when cluster reservation is required:
+
+```c
+ci_t root = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
+cinfo_t info = {
+    .full_name = "LOG     BIN",
+    .type = STAT_FILE
+};
+
+if (root >= 0) {
+    NIFAT32_put_content(root, &info, 4); // Preallocate four clusters.
+    NIFAT32_close_content(root);
+}
 ```
 
-The output file will be placed at:
-```bash
-builds/nifat32.so
+`NO_RESERVE` is `1`. Creation through `NIFAT32_open_content()` is more convenient for paths, but it does not expose cluster reservation.
+
+### Read content
+
+The content must be opened with `R_MODE`. The function returns the number of bytes copied to the buffer.
+
+```c
+char buffer[64] = { 0 };
+
+int read_size = NIFAT32_read_content2buffer(
+    file,
+    0, // Byte offset in the content.
+    (buffer_t)buffer,
+    sizeof(buffer)
+);
+
+if (read_size > 0) {
+    // buffer[0..read_size-1] contains the data.
+}
 ```
 
-By default the library is built with logs enabled. You can disable some log groups through Make variables:
-```bash
-make DEBUG_LOGS=0 IO_LOGS=0 MEM_LOGS=0
+Reading a directory returns its raw encoded directory data.
+
+### Write content
+
+The content must be opened with `W_MODE`. The function returns the number of bytes written.
+
+```c
+const char message[] = "System started\n";
+
+int written = NIFAT32_write_buffer2content(
+    file,
+    0, // Byte offset in the content.
+    (const_buffer_t)message,
+    sizeof(message) - 1
+);
+
+if (written != (int)(sizeof(message) - 1)) {
+    // The complete message was not written.
+}
 ```
 
-There are several compile flags for changing library behaviour:
+The current write implementation grows cluster chains but does not automatically update file-size metadata. Use `NIFAT32_change_meta()` or `NIFAT32_truncate_content()` when the stored size must be updated.
 
-| Make variable | C macro | Description |
-|-|-|-|
-| NIFAT32_RO | NIFAT32_RO | Builds the library in Read-Only mode. Write operations, content creation, copy, truncate and delete won't change the image. |
-| NO_HEAP | NO_HEAP | Exclude from an instance any code which involves heap usage (mallocs) |
-| - | NIFAT32_NO_ECACHE | Excludes from an instance all code for indexation. Operation index content won't do anything | 
-| - | NO_FAT_CACHE | Excludes from an instance all code for fat caching |
-| - | NO_FAT_MAP | Excludes from an instance all code for fat map |
-| - | NO_ENTRY_VALIDATION | Disable an entry validation with a hash function before any interaction |
-| NO_DEFAULT_MM_MANAGER | NO_DEFAULT_MM_MANAGER | Excludes the default built-in memory manager. Use it when you provide your own `mm_manager` functions in `nifat32_params_t`. |
-| ALLOC_BUFFER_SIZE | ALLOC_BUFFER_SIZE | Changes the static buffer size for the default memory manager. This value is used only when the default manager is enabled. |
+### Get content information
 
-Examples:
-```bash
-make NIFAT32_RO=1
-make NO_DEFAULT_MM_MANAGER=1
-make ALLOC_BUFFER_SIZE=1048576
+`NIFAT32_stat_content()` fills a `cinfo_t` structure with the entry name and type.
+
+```c
+cinfo_t stat = { 0 };
+
+if (NIFAT32_stat_content(file, &stat)) {
+    // stat.full_name contains the FAT 8.3 name.
+    // stat.type is STAT_FILE or STAT_DIR.
+}
 ```
 
-You can combine these flags with logging options:
-```bash
-make NIFAT32_RO=1 ALLOC_BUFFER_SIZE=262144 DEBUG_LOGS=0
+| Field | Meaning |
+| --- | --- |
+| `full_name[12]` | 11-byte FAT 8.3 name plus storage for a terminator |
+| `name[8]` | Base name |
+| `extention[4]` | Extension; the public field retains this spelling |
+| `size` | File size metadata |
+| `type` | `STAT_FILE` or `STAT_DIR` |
+
+The current `NIFAT32_stat_content()` implementation does not populate `size` for files. Do not read that field after `stat` until the implementation is corrected.
+
+### Change content metadata
+
+`NIFAT32_change_meta()` changes directory entry metadata. It does not move or resize the cluster chain.
+
+```c
+cinfo_t info = {
+    .full_name = "CONFIG  BAK",
+    .size = 128,
+    .type = STAT_FILE
+};
+
+if (!NIFAT32_change_meta(file, &info)) {
+    // Metadata update failed.
+}
 ```
 
-P.S.: *The source also understands `NON_DEFAULT_MM_MANAGER` as an old name for `NO_DEFAULT_MM_MANAGER`. For new builds it is better to use `NO_DEFAULT_MM_MANAGER`.*
+### Truncate content
 
-### Formatter
-The formatter creates a NiFAT32 image and can optionally copy files from a source directory to the image.
-```bash
-cd formatter
-make
-./formatter -o ../nifat32.img
+Truncation changes the occupied cluster chain and stored file size. The content must be open with `W_MODE`.
+
+```c
+if (NIFAT32_truncate_content(file, 0, 128)) {
+    // Keep 128 bytes starting from offset zero.
+}
 ```
 
-There are several formatter options:
+### Index a directory
 
-| Option | Description | Default value |
-|-|-|-|
-| -o | Output image path | Required |
-| -s | Source directory which should be copied to the image | Empty image |
-| --volume-size | Volume size in MB | 64 |
-| --spc | Sectors per cluster | 8 |
-| --fc | FAT copies count | 4 |
-| --bsbc | Bootsector copies count | 5 |
-| --b-bsbc | Count of broken bootsector copies for debug/testing | 0 |
-| --jc | Journal sectors count | 2 |
+Index frequently searched directories to speed up repeated lookups.
 
-Example:
-```bash
-./formatter -o ../nifat32.img -s ../data --volume-size 128 --spc 8 --fc 4 --bsbc 5 --jc 2
+```c
+char directory_name[12] = { 0 };
+char file_name[12] = { 0 };
+nft32_name_to_fatname("data", directory_name);
+nft32_name_to_fatname("config.bin", file_name);
+
+ci_t directory = NIFAT32_open_content(NO_RCI, directory_name, DF_MODE);
+
+if (directory >= 0) {
+    NIFAT32_index_content(directory);
+
+    // Relative lookups can now use the directory index.
+    ci_t file = NIFAT32_open_content(directory, file_name, DF_MODE);
+    if (file >= 0) NIFAT32_close_content(file);
+    NIFAT32_close_content(directory);
+}
 ```
 
-### Unix executable
-The `unix_nifat32.c` file is a simple interactive executable above the library API. It can be used as a small shell for a NiFAT32 image.
-```bash
-gcc unix_nifat32.c nifat32.c src/*.c std/*.c -Iinclude -o unix_nifat32
-./unix_nifat32 nifat32.img 64 512 5 2
+Indexing requires allocator support and has no useful effect when compiled with `NIFAT32_NO_ECACHE`.
+
+### Copy content
+
+The destination must already exist as a placeholder:
+
+| Copy type | Behavior |
+| --- | --- |
+| `DEEP_COPY` | Allocate a new cluster chain and recursively duplicate directory data |
+| `SHALLOW_COPY` | Replace the destination with a link to the source cluster chain |
+
+```c
+char source_path[64] = { 0 };
+char copy_path[64] = { 0 };
+nft32_path_to_fatnames("data/config.bin", source_path);
+nft32_path_to_fatnames("backup.bin", copy_path);
+
+ci_t source = NIFAT32_open_content(NO_RCI, source_path, DF_MODE);
+ci_t copy = NIFAT32_open_content(
+    NO_RCI,
+    copy_path,
+    MODE(R_MODE | W_MODE | CR_MODE, FILE_TARGET)
+);
+
+if (source >= 0 && copy >= 0) {
+    NIFAT32_copy_content(source, copy, DEEP_COPY);
+}
+
+if (source >= 0) NIFAT32_close_content(source);
+if (copy >= 0) NIFAT32_close_content(copy);
 ```
 
-Arguments are the next:
+Copying deallocates the destination's previous data. A shallow copy must not be placed in the same directory under a conflicting name.
 
-| Argument | Description |
-|-|-|
-| argv[1] | Path to NiFAT32 image |
-| argv[2] | Image size in MB |
-| argv[3] | Sector size |
-| argv[4] | Bootsectors count |
-| argv[5] | Journal sectors count |
+### Delete content
 
-The executable supports commands like `cd`, `ls`, `mkdir`, `mkfile`, `read`, `write`, `trunc`, `cp`, `mv`, `rm`, `frename`, `rs` and `get_le`.
+Deleting a directory also removes its children recursively. The supplied content index is closed by the function.
+
+```c
+char fat_path[64] = { 0 };
+nft32_path_to_fatnames("backup.bin", fat_path);
+
+ci_t file = NIFAT32_open_content(NO_RCI, fat_path, DF_MODE);
+
+if (file >= 0) {
+    NIFAT32_delete_content(file);
+    // Do not close file: NIFAT32_delete_content() already did it.
+}
+```
+
+### Repair boot sectors
+
+`NIFAT32_repair_bootsectors()` rebuilds every boot sector copy from the currently mounted geometry.
+
+```c
+NIFAT32_repair_bootsectors(); // Rewrite all boot sector copies.
+```
+
+### Repair content
+
+`NIFAT32_repair_content()` reads, corrects and rewrites directory entries. Pass a nonzero second argument to visit subdirectories recursively.
+
+```c
+ci_t root = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
+
+if (root >= 0) {
+    NIFAT32_repair_content(root, 1); // Recursive repair.
+    NIFAT32_close_content(root);
+}
+```
+
+### Get filesystem information
+
+`NIFAT32_get_fs_data()` copies the currently mounted geometry.
+
+```c
+fat_data_t fs = { 0 };
+
+if (NIFAT32_get_fs_data(&fs)) {
+    // fs.cluster_size is bytes_per_sector * sectors_per_cluster.
+    // fs.fat_count is the number of FAT copies.
+}
+```
+
+### Get the last error
+
+Persistent errors are consumed from the error ring one at a time.
+
+```c
+error_code_t error = NIFAT32_get_last_error();
+
+if (error >= 0) {
+    // Handle the registered error code.
+}
+```
+
+The function returns `-1` when no error is available. With `NIFAT32_NO_ERROR=1`, registration is disabled and the function returns `NO_ERROR`.
+
+### Close content
+
+Close every successfully opened content index when it is no longer needed.
+
+```c
+if (file >= 0) {
+    NIFAT32_close_content(file);
+}
+```
+
+### Unload the filesystem
+
+Call `NIFAT32_unload()` after all work is complete. It releases the FAT cache and destroys the content table.
+
+```c
+NIFAT32_unload();
+```
+
+### Read-Only Builds
+
+With `NIFAT32_RO=1`, reads, lookup, stat, indexing, and lifecycle operations remain available. Storage-mutating paths are compiled as no-ops. In the current API these no-op functions generally return success, so callers must not use the return value to infer that persistent data changed.
+
+Affected operations include write, truncate, metadata changes, creation, copy, deletion, journal writes, FAT writes, and repair writes.
+
+## Unix Utility
+
+Build:
+
+```bash
+make unix
+```
+
+Run:
+
+```bash
+./builds/unix_nifat32 nifat32.img 64 512 5 2
+```
+
+Arguments are image path, image size in MB, sector size, boot sector copy count, and journal count. Supported commands include `cd`, `ls`, `mkdir`, `mkfile`, `read`, `write`, `trunc`, `cp`, `mv`, `rm`, `frename`, `rs`, `ws`, and `get_le`.
 
 ## Testing
-For testing purposes, there is a Python runner in the `test` folder:
+
+The test runner can build a fresh image and execute the C test suite:
+
 ```bash
-python3 test/nifat32_tests.py --new-image --formatter formatter --tests-folder test --root-folder . --clean --test-type default
+python3 test/nifat32_tests.py \
+  --new-image \
+  --formatter formatter \
+  --tests-folder test \
+  --root-folder . \
+  --clean \
+  --test-type default
 ```
 
-You can run bitflip tests with an injector scenario:
+Fault-injection tests:
+
 ```bash
-python3 test/nifat32_tests.py --new-image --formatter formatter --tests-folder test --root-folder . --clean --test-type bitflip --injector-scenario test/injector_scenario.txt
+python3 test/nifat32_tests.py \
+  --new-image \
+  --formatter formatter \
+  --tests-folder test \
+  --root-folder . \
+  --clean \
+  --test-type bitflip \
+  --injector-scenario test/injector_scenario.txt
 ```
 
-More information about tests and data collection is placed in `test/README.md`.
-
-## Features
-The project provides:
-
-| Feature | Description |
-|-|-|
-| FAT32-like layout | The file system keeps the FAT-style content model, clusters and directory entries. |
-| Noise-immune bootsectors | Bootsector copies are encoded and physically decompressed across the image. |
-| FAT copies with voting | FAT reads can use several FAT copies and synchronize them after mismatch detection. |
-| Directory entry protection | Directory entries contain checksum and hash fields. |
-| Optional FAT cache | Lazy cache and hard cache modes are supported. |
-| Journals | Journal sectors can be used during initialization for restoration. |
-| Error storage | The file system can store and return registered error codes. |
-| Platform IO abstraction | Disk and logging functions are passed through `nifat32_params_t`, so the library can be ported to Unix, embedded systems or another environment. |
-| Custom memory manager | Memory operations can be provided by the platform through `mm_manager`. |
-
-P.S.: *NiFAT32 is not a drop-in replacement for a system FAT32 boot partition. Bootsectors and FAT tables are encoded and placed with NiFAT32-specific rules, so the reader should use this library or compatible logic.*
+See [`test/README.md`](test/README.md) for campaign and collector options.

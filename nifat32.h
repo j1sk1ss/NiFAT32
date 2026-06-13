@@ -106,6 +106,7 @@ typedef struct {
     #define NIFAT32_NO_ECACHE
     #define NO_FAT_CACHE
     #define NO_FAT_MAP
+    #define NO_DEFAULT_MM_MANAGER
 #endif
 
 /*

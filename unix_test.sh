@@ -1,8 +1,4 @@
-gcc unix_nifat32.c nifat32.c                                \
-    -Iinclude src/* std/*                                   \
-    -DERROR_LOGS -DLOGGING_LOGS -DWARNING_LOGS -DDEBUG_LOGS \
-    -DNON_DEFAULT_MM_MANAGER -DNO_HEAP                      \
-    -o builds/nifat32_unix
+make tools
 
 cd formatter && make && ./formatter --jc 2 -o nifat32.img -s nifat32
 rm formatter
@@ -14,4 +10,4 @@ mv formatter/nifat32.img .
 # argv[3] - Sector size
 # argv[4] - bs_count
 # argv[5] - jc
-./builds/nifat32_unix nifat32.img 64 512 5 2
+./builds/unix_nifat32 nifat32.img 64 512 5 2
