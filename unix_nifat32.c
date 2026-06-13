@@ -67,7 +67,7 @@ argv[3] - Sector size
 argv[4] - bs_count
 argv[5] - jc
 */
-int main(int argc, char* argv[]) {
+int main(__attribute__((unused)) int argc, char* argv[]) {
     disk_fd = open(argv[1], O_RDWR);
     if (disk_fd < 0) {
         fprintf(stderr, "%s not found!\n", argv[1]);
@@ -159,7 +159,6 @@ upper: {}
                 
                 break;
             }
-            
             case CP: {
                 const char* src = cmds[1];
                 const char* dst = cmds[2];
@@ -192,7 +191,6 @@ upper: {}
                 
                 break;
             }
-
             case MV: {
                 const char* src = cmds[1];
                 const char* dst = cmds[2];
@@ -216,7 +214,7 @@ upper: {}
                 nft32_path_to_fatnames(dst_path, dst_83);
 
                 ci_t src_ci = NIFAT32_open_content(NO_RCI, src_83, DF_MODE);
-                ci_t dst_ci = NIFAT32_open_content(NO_RCI, dst_83, MODE(W_MODE | CR_MODE, FILE_TARGET));
+                ci_t dst_ci = NIFAT32_open_content(NO_RCI, dst_83, MODE((W_MODE | CR_MODE), FILE_TARGET));
                 if (src_ci >= 0 && dst_ci >= 0) {
                     NIFAT32_copy_content(src_ci, dst_ci, DEEP_COPY);
                     NIFAT32_delete_content(src_ci);
@@ -225,7 +223,6 @@ upper: {}
 
                 break;
             }
-
             case MKFILE: {
                 const char* file_name = cmds[1];
                 const char* file_ext  = cmds[2];
@@ -251,7 +248,6 @@ upper: {}
                 
                 break;
             }
-
             case MKDIR: {
                 const char* name = cmds[1];
                 
@@ -270,7 +266,6 @@ upper: {}
                 
                 break;
             }
-
             case FRENAME: {
                 const char* name = cmds[1];
                 char src_path[128] = { 0 };
@@ -293,7 +288,6 @@ upper: {}
                 
                 break;
             }
-
             case RM: {
                 char path_buffer[256] = { 0 };
                 strcpy(path_buffer, current_path);
@@ -310,7 +304,6 @@ upper: {}
                 else printf("Content not found!\n");
                 break;
             }
-
             case READ: {
                 char path_buffer[256] = { 0 };
                 strcpy(path_buffer, current_path);
@@ -335,7 +328,6 @@ upper: {}
                 
                 break;
             }
-            
             case WRITE: {
                 char path_buffer[256] = { 0 };
                 strcpy(path_buffer, current_path);
@@ -357,7 +349,6 @@ upper: {}
                 
                 break;
             }
-            
             case TRUNC: {
                 char path_buffer[256] = { 0 };
                 strcpy(path_buffer, current_path);
@@ -381,7 +372,6 @@ upper: {}
                 
                 break;
             }
-
             case LS: {
                 ci_t ci = -1;
                 if (strlen(current_path) > 1) ci = NIFAT32_open_content(NO_RCI, current_path, DF_MODE);
@@ -412,7 +402,6 @@ upper: {}
 
                 break;
             }
-            
             case RS: {
                 int sector = atoi(cmds[1]);
                 char buffer[sector_size];
@@ -427,13 +416,11 @@ upper: {}
                 printf("\n");
                 break;
             }
-
             case LE: {
                 error_code_t c = NIFAT32_get_last_error();
                 printf("Last error code: %i\n", c);
                 break;
             }
-
             default: break;
         }
     }

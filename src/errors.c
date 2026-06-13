@@ -26,8 +26,9 @@ static int __write_error__(int index, error_code_t c, fat_data_t* fi, int copy_i
 
 static int _write_error(int index, error_code_t c, fat_data_t* fi) {
     print_debug("_write_error(index=%i, c=%i)", index, c);
-    for (int i = 0; i < fi->errors_count; i++) __write_error__(index, c, fi, i);
-    return 1;
+    int write_status = 1;
+    for (int i = 0; i < fi->errors_count; i++) write_status = __write_error__(index, c, fi, i) && write_status;
+    return write_status;
 }
 
 static int __read_error__(int index, error_code_t* c, fat_data_t* fi, int copy_index) {

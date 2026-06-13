@@ -111,7 +111,7 @@ int setup_content(
 Set the table to zero.
 Returns 1 if table is ready, otherwise will return 0.
 */
-int ctable_init();
+void ctable_init();
 
 /*
 Allocate a new one content idex.

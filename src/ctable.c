@@ -2,13 +2,11 @@
 
 static content_t _content_table[CONTENT_TABLE_SIZE];
 
-int ctable_init() {
+void ctable_init() {
     for (ci_t i = 0; i < CONTENT_TABLE_SIZE; i++) {
         _content_table[i].content_type = CONTENT_TYPE_EMPTY;
         _content_table[i].index.root   = NO_ECACHE;
     }
-    
-    return 1;
 }
 
 lock_t _content_lock = NULL_LOCK;

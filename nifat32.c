@@ -33,14 +33,14 @@ int NIFAT32_init(nifat32_params_t* params) {
 
     stack_buffer_t encoded_bs[params->disk_io.sector_size];
     _fs_data.bs_count = params->bs_count;
-    if (!DSK_read_sector(GET_BOOTSECTOR(params->bs_num, params->ts), (buffer_t)&encoded_bs, params->disk_io.sector_size)) {
+    if (!DSK_read_sector(GET_BOOTSECTOR(params->bs_num, params->ts), (buffer_t)encoded_bs, params->disk_io.sector_size)) {
         print_error("DSK_read_sector() error!");
         errors_register_error(SECTOR_READ_ERROR, &_fs_data);
         return 0;
     }
 
     nifat32_bootsector_t bootstruct;
-    nft32_unpack_memory((encoded_t*)&encoded_bs, (byte_t*)&bootstruct, sizeof(nifat32_bootsector_t));
+    nft32_unpack_memory((encoded_t*)encoded_bs, (byte_t*)&bootstruct, sizeof(nifat32_bootsector_t));
 
     checksum_t bcheck = bootstruct.checksum;
     bootstruct.checksum = 0;
@@ -132,10 +132,7 @@ int NIFAT32_init(nifat32_params_t* params) {
         }
     }
 
-    if (!ctable_init()) {
-        print_warn("Ctable init error!");
-    }
-
+    ctable_init();
     if (params->jc && !restore_from_journal(&_fs_data)) {
         print_warn("Journal restore error!");
     }
@@ -204,6 +201,11 @@ static cluster_addr_t _get_cluster_by_path(
         if (path[iterator] == PATH_SPLITTER || !path[iterator]) {
             char name_buffer[32]    = { 0 };
             char fatname_buffer[32] = { 0 };
+
+            if (iterator - start >= sizeof(name_buffer)) {
+                print_error("Name is too large!");
+                return FAT_CLUSTER_BAD;
+            }
 
             nft32_str_memcpy(name_buffer, path + start, iterator - start);
             nft32_name_to_fatname(name_buffer, fatname_buffer);
@@ -405,8 +407,7 @@ int NIFAT32_write_buffer2content(const ci_t ci, cluster_offset_t offset, const_b
 
     int total_written = 0;
     unsigned int total_size = 0;
-    cluster_addr_t ca  = get_content_data_ca(ci);
-    cluster_addr_t lca = ca;
+    cluster_addr_t ca = get_content_data_ca(ci), lca;
     do {
         if (offset > _fs_data.cluster_size) {
             total_size += _fs_data.cluster_size;
@@ -498,8 +499,7 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size) {
             else {
                 if (start_ca == FAT_CLUSTER_BAD) start_ca = ca;
                 if (
-                    (size -= _fs_data.cluster_size) < 0 && 
-                    end_ca == FAT_CLUSTER_BAD           &&
+                    (size -= _fs_data.cluster_size) < 0 &&
                     set_cluster_end(ca, &_fs_data)
                 ) end_ca = ca;
             }

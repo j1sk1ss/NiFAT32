@@ -43,19 +43,19 @@ int entry_iterate(
     stack_buffer_t cluster_data[fi->cluster_size], decoded_cluster[decoded_len];
     unsigned int entries_per_cluster = (fi->cluster_size / sizeof(encoded_t)) / sizeof(directory_entry_t);
     do {
-        if (!_read_encoded_cluster(ca, (buffer_t)&cluster_data, fi->cluster_size, (buffer_t)&decoded_cluster, decoded_len, fi)) {
+        if (!_read_encoded_cluster(ca, (buffer_t)cluster_data, fi->cluster_size, (buffer_t)decoded_cluster, decoded_len, fi)) {
             break;
         }
         
-        directory_entry_t* entry = (directory_entry_t*)&decoded_cluster;
+        directory_entry_t* entry = (directory_entry_t*)decoded_cluster;
         for (unsigned int i = 0; i < entries_per_cluster && !exit; i++, entry++) {
             if (entry->file_name[0] == ENTRY_END) break;
             entry_info_t info = { .ca = ca, .offset = i };
             exit = handler(&info, entry, ctx);
         }
 
-        nft32_pack_memory((buffer_t)&decoded_cluster, (encoded_t*)&cluster_data, decoded_len);
-        if (!write_cluster(ca, (buffer_t)&cluster_data, fi->cluster_size, fi)) {
+        nft32_pack_memory((buffer_t)decoded_cluster, (encoded_t*)cluster_data, decoded_len);
+        if (!write_cluster(ca, (buffer_t)cluster_data, fi->cluster_size, fi)) {
             print_error("Error correction of directory entry failed. Aborting...");
             errors_register_error(ERROR_CORRECTION_ERROR, fi);
             break;
@@ -107,6 +107,7 @@ int entry_search(
     const char* name, cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* meta, fat_data_t* __restrict fi
 ) {
     print_debug("entry_search(name=%s, ca=%u, cache=%s)", name, ca, cache != NO_ECACHE ? "YES" : "NO");
+    if (!name) return 0;
     if (cache != NO_ECACHE) {
         checksum_t entry_hash = nft32_murmur3_x86_32((const_buffer_t)name, 11, 0);
         ecache_t* cached_entry = ecache_find(cache, entry_hash);
@@ -175,7 +176,7 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
     stack_buffer_t cluster_data[fi->cluster_size], decoded_cluster[decoded_len];    
     unsigned int entries_per_cluster = (fi->cluster_size / sizeof(encoded_t)) / sizeof(directory_entry_t);
     do {
-        if (!_read_encoded_cluster(ca, (buffer_t)&cluster_data, fi->cluster_size, (buffer_t)&decoded_cluster, decoded_len, fi)) {
+        if (!_read_encoded_cluster(ca, (buffer_t)cluster_data, fi->cluster_size, (buffer_t)decoded_cluster, decoded_len, fi)) {
             break;
         }
     
@@ -198,8 +199,8 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
                     ecache_insert(cache, entry_hash, (entry->attributes & FILE_DIRECTORY) != FILE_DIRECTORY, meta->dca);
                 }
 
-                nft32_pack_memory((buffer_t)&decoded_cluster, (encoded_t*)&cluster_data, decoded_len);
-                if (!write_cluster(ca, (buffer_t)&cluster_data, fi->cluster_size, fi)) {
+                nft32_pack_memory((buffer_t)decoded_cluster, (encoded_t*)cluster_data, decoded_len);
+                if (!write_cluster(ca, (buffer_t)cluster_data, fi->cluster_size, fi)) {
                     print_error("Writing new directory entry failed. Aborting...");
                     errors_register_error(ENTRY_ADD_ERROR, fi);
                     return -6;
@@ -252,16 +253,12 @@ static int _entry_erase_rec(cluster_addr_t ca, int file, fat_data_t* fi) {
     if (file) return dealloc_chain(ca, fi);
     else {
         int decoded_len = fi->cluster_size / sizeof(encoded_t);
-        if (fi->cluster_size || decoded_len < 0) {
-            print_error("decoded_len (%i) is lower than 0!", decoded_len);
-            return 0;
-        }
 
-        cluster_addr_t nca = ca;
+        cluster_addr_t nca;
         stack_buffer_t cluster_data[fi->cluster_size], decoded_cluster[decoded_len];   
         unsigned int entries_per_cluster = (fi->cluster_size / sizeof(encoded_t)) / sizeof(directory_entry_t);
         do {
-            if (!_read_encoded_cluster(ca, (buffer_t)&cluster_data, fi->cluster_size, (buffer_t)&decoded_cluster, decoded_len, fi)) {
+            if (!_read_encoded_cluster(ca, (buffer_t)cluster_data, fi->cluster_size, (buffer_t)decoded_cluster, decoded_len, fi)) {
                 break;
             }
             

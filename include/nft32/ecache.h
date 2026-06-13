@@ -28,22 +28,20 @@ extern "C" {
 #define ECACHE_FILE  0b00000010
 #define ECACHE_DIR   0b00000100
 
-#define IS_ECACHE_RED(n)     (((n) != NULL) && (((n)->flags & ECACHE_BLACK) == 0))
-#define IS_ECACHE_BLACK(n)   (((n) != NULL) && (((n)->flags & ECACHE_BLACK) != 0))
-#define SET_ECACHE_RED(n)    do { if (n) (n)->flags &= ~ECACHE_BLACK; } while (0)
-#define SET_ECACHE_BLACK(n)  do { if (n) (n)->flags |= ECACHE_BLACK; } while (0)
+#define IS_ECACHE_RED(n)     ((((n)->flags & ECACHE_BLACK) == 0))
+#define IS_ECACHE_BLACK(n)   ((((n)->flags & ECACHE_BLACK) != 0))
+#define SET_ECACHE_RED(n)    do { (n)->flags &= ~ECACHE_BLACK; } while (0)
+#define SET_ECACHE_BLACK(n)  do { (n)->flags |= ECACHE_BLACK; } while (0)
 
-#define IS_ECACHE_FILE(n)    (((n) != NULL) && (((n)->flags & ECACHE_FILE) != 0))
-#define IS_ECACHE_DIR(n)     (((n) != NULL) && (((n)->flags & ECACHE_DIR) != 0))
-#define SET_ECACHE_FILE(n)   do { if (n) (n)->flags |= ECACHE_FILE; } while (0)
-#define SET_ECACHE_DIR(n)    do { if (n) (n)->flags |= ECACHE_DIR; } while (0)
+#define IS_ECACHE_FILE(n)    ((((n)->flags & ECACHE_FILE) != 0))
+#define IS_ECACHE_DIR(n)     ((((n)->flags & ECACHE_DIR) != 0))
+#define SET_ECACHE_FILE(n)   do { (n)->flags |= ECACHE_FILE; } while (0)
+#define SET_ECACHE_DIR(n)    do { (n)->flags |= ECACHE_DIR; } while (0)
 
 #define GET_ECACHE_COLOR(n) (((n) != NULL) ? ((n)->flags & ECACHE_BLACK) : ECACHE_BLACK)
-#define SET_ECACHE_COLOR_VAL(n, val) do {            \
-    if (n) {                                         \
-        if (val & ECACHE_BLACK) SET_ECACHE_BLACK(n); \
-        else SET_ECACHE_RED(n);                      \
-    }                                                \
+#define SET_ECACHE_COLOR_VAL(n, val) do {        \
+    if (val & ECACHE_BLACK) SET_ECACHE_BLACK(n); \
+    else SET_ECACHE_RED(n);                      \
 } while (0)
 
 typedef struct ecache {
