@@ -111,12 +111,9 @@ typedef struct {
 
 /*
 Load general information.
-Params:
-    - `d` - Output data destination.
-
-Returns 1 if succeeds.
+Returns the main structure by value.
 */
-int NIFAT32_get_fs_data(fat_data_t* d);
+fat_data_t NIFAT32_get_fs_data();
 
 /*
 Init function. 

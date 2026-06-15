@@ -4,8 +4,7 @@ nifat32_timer_t r, w;
 
 int main() {
     if (!setup_nifat32(NULL)) return EXIT_FAILURE;
-    fat_data_t fd;
-    NIFAT32_get_fs_data(&fd);
+    fat_data_t fd = NIFAT32_get_fs_data();
     add_time2timer(MEASURE_TIME_US({
         if (read_fat(123, &fd) == FAT_CLUSTER_BAD) return EXIT_FAILURE;
     }), &r);

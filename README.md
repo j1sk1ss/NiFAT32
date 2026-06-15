@@ -652,12 +652,7 @@ if (root >= 0) {
 `NIFAT32_get_fs_data()` copies the currently mounted geometry.
 
 ```c
-fat_data_t fs = { 0 };
-
-if (NIFAT32_get_fs_data(&fs)) {
-    // fs.cluster_size is bytes_per_sector * sectors_per_cluster.
-    // fs.fat_count is the number of FAT copies.
-}
+fat_data_t fs = NIFAT32_get_fs_data();
 ```
 
 ### Get the last error

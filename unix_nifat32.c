@@ -183,7 +183,7 @@ upper: {}
 
                 ci_t src_ci = NIFAT32_open_content(NO_RCI, src_83, DF_MODE);
                 ci_t dst_ci = NIFAT32_open_content(NO_RCI, dst_83, DF_MODE);
-                if (src_ci >= 0 && dst_ci >= 0) {
+                if (OPEN_SUCCESS(src_ci) && OPEN_SUCCESS(dst_ci)) {
                     NIFAT32_copy_content(src_ci, dst_ci, SHALLOW_COPY);
                     NIFAT32_close_content(src_ci);
                     NIFAT32_close_content(dst_ci);
@@ -215,7 +215,7 @@ upper: {}
 
                 ci_t src_ci = NIFAT32_open_content(NO_RCI, src_83, DF_MODE);
                 ci_t dst_ci = NIFAT32_open_content(NO_RCI, dst_83, MODE((W_MODE | CR_MODE), FILE_TARGET));
-                if (src_ci >= 0 && dst_ci >= 0) {
+                if (OPEN_SUCCESS(src_ci) && OPEN_SUCCESS(dst_ci)) {
                     NIFAT32_copy_content(src_ci, dst_ci, DEEP_COPY);
                     NIFAT32_delete_content(src_ci);
                     NIFAT32_close_content(dst_ci);
@@ -240,7 +240,7 @@ upper: {}
                 ci_t root_ci;
                 if (strlen(current_path) > 1) root_ci = NIFAT32_open_content(NO_RCI, current_path, DF_MODE);
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
-                if (root_ci < 0) fprintf(stderr, "Can't open file!\n");
+                if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
                     NIFAT32_put_content(root_ci, &file_info, reserve);
                     NIFAT32_close_content(root_ci);
@@ -258,7 +258,7 @@ upper: {}
                 ci_t root_ci;
                 if (strlen(current_path) > 1) root_ci = NIFAT32_open_content(NO_RCI, current_path, DF_MODE);
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
-                if (root_ci < 0) fprintf(stderr, "Can't open file!\n");
+                if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
                     NIFAT32_put_content(root_ci, &dir_info, NO_RESERVE);
                     NIFAT32_close_content(root_ci);
@@ -272,7 +272,7 @@ upper: {}
                 nft32_name_to_fatname(name, src_path);
 
                 ci_t src = NIFAT32_open_content(NO_RCI, src_path, DF_MODE);
-                if (src >= 0) {
+                if (OPEN_SUCCESS(src)) {
                     const char* file_name = cmds[2];
                     const char* file_ext  = cmds[3];
                     cinfo_t file_info = { .type = STAT_FILE, .size = 12 };
@@ -300,7 +300,7 @@ upper: {}
                 strcat(path_buffer, fatbuffer);
 
                 ci_t ci = NIFAT32_open_content(NO_RCI, path_buffer, DF_MODE);
-                if (ci >= 0) NIFAT32_delete_content(ci);
+                if (OPEN_SUCCESS(ci)) NIFAT32_delete_content(ci);
                 else printf("Content not found!\n");
                 break;
             }
@@ -316,14 +316,12 @@ upper: {}
                 strcat(path_buffer, fatbuffer);
 
                 ci_t ci = NIFAT32_open_content(NO_RCI, path_buffer, DF_MODE);
-                if (ci >= 0) {
+                if (!OPEN_SUCCESS(ci)) printf("Content not found!\n");
+                else {
                     char content[512] = { 0 };
                     NIFAT32_read_content2buffer(ci, 0, (buffer_t)content, sizeof(content));
                     printf("%s\n", content);
                     NIFAT32_close_content(ci);
-                }
-                else {
-                    printf("Content not found!\n");
                 }
                 
                 break;
@@ -339,12 +337,10 @@ upper: {}
                 strcat(path_buffer, fatbuffer);
 
                 ci_t ci = NIFAT32_open_content(NO_RCI, path_buffer, DF_MODE);
-                if (ci >= 0) {
+                if (!OPEN_SUCCESS(ci)) printf("Content not found!\n");
+                else {
                     NIFAT32_write_buffer2content(ci, 0, (const_buffer_t)cmds[2], 512);
                     NIFAT32_close_content(ci);
-                }
-                else {
-                    printf("Content not found!\n");
                 }
                 
                 break;
@@ -362,12 +358,10 @@ upper: {}
                 int offset = atoi(cmds[2]);
                 int size   = atoi(cmds[3]);
                 ci_t ci = NIFAT32_open_content(NO_RCI, path_buffer, DF_MODE);
-                if (ci >= 0) {
+                if (!OPEN_SUCCESS(ci)) printf("Content not found!\n");
+                else {
                     NIFAT32_truncate_content(ci, offset, size);
                     NIFAT32_close_content(ci);
-                }
-                else {
-                    printf("Content not found!\n");
                 }
                 
                 break;
@@ -375,8 +369,9 @@ upper: {}
             case LS: {
                 ci_t ci = -1;
                 if (strlen(current_path) > 1) ci = NIFAT32_open_content(NO_RCI, current_path, DF_MODE);
-                else ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
-                if (ci >= 0) {
+                else                          ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
+                if (!OPEN_SUCCESS(ci)) printf("Content not found!\n");
+                else {
                     unsigned char cluster_data[8192] = { 0 };
                     NIFAT32_read_content2buffer(ci, 0, (buffer_t)cluster_data, 8192);
 
@@ -395,9 +390,6 @@ upper: {}
                     }
 
                     NIFAT32_close_content(ci);
-                }
-                else {
-                    printf("Content not found!\n");
                 }
 
                 break;

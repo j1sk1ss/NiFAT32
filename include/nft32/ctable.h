@@ -36,6 +36,10 @@ extern "C" {
 
 /* Content Index - ci */
 typedef int ci_t;
+#ifndef OPEN_SUCCESS
+    /* Whether a content index is valid */
+    #define OPEN_SUCCESS(cid) (cid >= 0)
+#endif
 
 typedef struct {
     char name[9];

@@ -25,7 +25,8 @@ extern "C" {
 #include <std/threading.h>
 
 #if defined(NO_DEFAULT_MM_MANAGER) && !defined(NON_DEFAULT_MM_MANAGER)
-#define NON_DEFAULT_MM_MANAGER
+    /* Disable the default simple memory manager */
+    #define NON_DEFAULT_MM_MANAGER
 #endif
 
 #ifndef ALLOC_BUFFER_SIZE

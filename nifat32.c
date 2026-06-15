@@ -4,9 +4,8 @@
    Contains data about the root cluster, offsets and general properties. */
 static fat_data_t _fs_data = { 0 };
 
-int NIFAT32_get_fs_data(fat_data_t* d) {
-    nft32_str_memcpy(d, &_fs_data, sizeof(fat_data_t));
-    return 1;
+fat_data_t NIFAT32_get_fs_data() {
+    return _fs_data;
 }
 
 int NIFAT32_init(nifat32_params_t* params) {
@@ -133,10 +132,10 @@ int NIFAT32_init(nifat32_params_t* params) {
     }
 
     ctable_init();
-    if (params->jc && !restore_from_journal(&_fs_data)) {
-        print_warn("Journal restore error!");
-    }
-
+    if (
+        params->jc && 
+        !restore_from_journal(&_fs_data)
+    ) print_warn("Journal restore error!");
     return 1;
 }
 
