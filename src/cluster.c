@@ -17,9 +17,19 @@ cluster_addr_t alloc_cluster(fat_data_t* fi) {
     cluster_addr_t cluster = fatmap_find_free(last_allocated_cluster, 1, fi);
     if (!cluster) cluster = last_allocated_cluster;
     else {
-        last_allocated_cluster = cluster + 1;
-        THR_release_write(&_allocater_lock, get_thread_num());
-        return cluster;
+        if (is_cluster_free(read_fat(cluster, fi))) {
+#ifndef NO_THREADSAFE
+            if (!write_fat(cluster, FAT_CLUSTER_RESERVED, fi)) {
+                THR_release_write(&_allocater_lock, get_thread_num());
+                return FAT_CLUSTER_BAD;
+            }
+#endif
+            last_allocated_cluster = cluster + 1;
+            THR_release_write(&_allocater_lock, get_thread_num());
+            return cluster;
+        }
+
+        cluster = last_allocated_cluster;
     }
 
     int nfree_skip_step = 0;
@@ -27,6 +37,12 @@ cluster_addr_t alloc_cluster(fat_data_t* fi) {
     while (cluster < fi->total_clusters) {
         cluster_status = read_fat(cluster, fi);
         if (is_cluster_free(cluster_status)) {
+#ifndef NO_THREADSAFE
+            if (!write_fat(cluster, FAT_CLUSTER_RESERVED, fi)) {
+                THR_release_write(&_allocater_lock, get_thread_num());
+                return FAT_CLUSTER_BAD;
+            }
+#endif
             last_allocated_cluster = cluster + 1;
             THR_release_write(&_allocater_lock, get_thread_num());
             return cluster;

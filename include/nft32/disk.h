@@ -137,6 +137,8 @@ int DSK_writeoff_sectors(sector_addr_t sa, sector_offset_t offset, const unsigne
 /*
 Copy sector to destination sector.
 Note: copy buffer should be greater or equals to sector size.
+[Thread-safe]
+
 Params:
 - src - Source start sector.
 - dst - Destination start sector.

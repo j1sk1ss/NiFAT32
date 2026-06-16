@@ -48,7 +48,7 @@ static int _read_journal(int index, journal_entry_t* entry, fat_data_t* fi) {
     int copy_pos = -1;
     checksum_t journal_checksum = -1;
     for (int i = 0; i < fi->journals_count; i++) {
-        journal_entry_t curr;
+        journal_entry_t curr = { 0 };
         __read_journal__(index, &curr, fi, i);
         if (curr.checksum == journal_checksum) val_freq++;
         else {
@@ -64,7 +64,7 @@ static int _read_journal(int index, journal_entry_t* entry, fat_data_t* fi) {
     }
 
     if (copy_pos < 0) return 0;
-    __read_journal__(copy_pos, entry, fi, index);
+    __read_journal__(index, entry, fi, copy_pos);
     if (wrong > 0) {
         print_warn("Journal wrong value at index=%u. Fixing to val=%u...", index, journal_checksum);
         _write_journal(index, entry, fi);
@@ -95,10 +95,15 @@ static int _unsqueeze_entry(squeezed_entry_t* src, unsqueezed_entry_t* dst) {
 #endif
 
 static unsigned char _journal_index = 0;
+lock_t _journal_lock = NULL_LOCK;
 
 int restore_from_journal(fat_data_t* fi) {
 #ifndef NIFAT32_RO
-    if (!fi->journals_count) return 0;
+    if (
+        !fi->journals_count || 
+        !THR_require_write(&_journal_lock, get_thread_num())
+    ) return 0;
+
     for (
         _journal_index = 0; 
         _journal_index < (fi->cluster_size / (sizeof(journal_entry_t) * sizeof(encoded_t))); 
@@ -133,39 +138,38 @@ int restore_from_journal(fat_data_t* fi) {
     }
 
     _journal_index = 0;
+    THR_release_write(&_journal_lock, get_thread_num());
     return 1;
 #endif
     UNUSED(fi);
     return 1;
 }
 
-lock_t _journal_lock = NULL_LOCK;
-
 int journal_add_operation(unsigned char op, cluster_addr_t ca, int offset, unsqueezed_entry_t* entry, fat_data_t* fi) {
 #ifndef NIFAT32_RO
     if (!fi->journals_count) return 0;
     print_debug("journal_add_operation(op=%u, ca=%u, offset=%i)", op, ca, offset);
-    
-    int delay = 100;
-    int entry_index = 0;
-    while (delay-- > 0) {
-        if (THR_require_write(&_journal_lock, get_thread_num())) {
-            entry_index = _journal_index++ % (fi->cluster_size / (sizeof(journal_entry_t) * sizeof(encoded_t)));
-            journal_entry_t curr;
-            _read_journal(entry_index, &curr, fi);
-            THR_release_write(&_journal_lock, get_thread_num());
-            if (curr.op == NO_OP) break;
-            else print_warn("Journal entry occupied. op=%i", curr.op);
-        }
-    }
-    
-    if (delay <= 0) return -1;
 
     journal_entry_t j_entry = { .ca = ca, .offset = offset, .op = op };
     _squeeze_entry(entry, &j_entry.entry);
-    _write_journal(entry_index, &j_entry, fi);
     
-    return entry_index;
+    int delay = 100;
+    if (!THR_require_write(&_journal_lock, get_thread_num())) return -1;
+    while (delay-- > 0) {
+        int entry_index = _journal_index++ % (fi->cluster_size / (sizeof(journal_entry_t) * sizeof(encoded_t)));
+        journal_entry_t curr;
+        _read_journal(entry_index, &curr, fi);
+        if (curr.op == NO_OP) {
+            _write_journal(entry_index, &j_entry, fi);
+            THR_release_write(&_journal_lock, get_thread_num());
+            return entry_index;
+        }
+
+        print_warn("Journal entry occupied. op=%i", curr.op);
+    }
+
+    THR_release_write(&_journal_lock, get_thread_num());
+    return -1;
 #endif
     UNUSED(op, ca, offset, entry, fi);
     print_warn("journal_add_operation() not implemented. Don't provide the 'NIFAT32_RO'!");
@@ -177,7 +181,10 @@ int journal_solve_operation(int index, fat_data_t* fi) {
     if (!fi->journals_count || index < 0) return 0;
     print_debug("journal_solve_operation(index=%i)", index);
     journal_entry_t solved = { 0x00 };
-    return _write_journal(index, &solved, fi);
+    if (!THR_require_write(&_journal_lock, get_thread_num())) return 0;
+    int result = _write_journal(index, &solved, fi);
+    THR_release_write(&_journal_lock, get_thread_num());
+    return result;
 #endif
     UNUSED(index, fi);
     print_warn("journal_solve_operation() not implemented. Don't provide the 'NIFAT32_RO'!");

@@ -50,6 +50,8 @@ typedef unsigned int cluster_val_t;
 /*
 Initialize cache for FAT.
 Note: Will allocate total_cluster * sizeof(uint32_t). 
+[Thread-safe]
+
 Params:
 - fi - Pointer to FS info.
 
@@ -61,6 +63,8 @@ int fat_cache_init(fat_data_t* fi);
 /*
 FAT cache hard load. Will load entier FAT table to RAM via fat_read.
 WARN: This operation really slow. Invoke it before start and only ones.
+[Thread-safe]
+
 Params:
 - fi - FS info.
 
@@ -71,6 +75,8 @@ int fat_cache_hload(fat_data_t* fi);
 
 /*
 Unload allocated fat cache table.
+[Thread-safe]
+
 Return 1 if operation success.
 Return 0 if cache was NULL.
 */
@@ -78,6 +84,8 @@ int fat_cache_unload();
 
 /*
 Iterate entire FAT and repair it with majority voting approach.
+[Thread-safe]
+
 Params:
     - fi - FS info.
 
@@ -89,6 +97,8 @@ int fat_repair(fat_data_t* fi);
 Read 4 bytes from FAT for target cluster.
 Note: Will read data from all copies. Return most freq. data.
 Note 2: Fix bit-errors if major voting works correct.
+[Thread-safe]
+
 Params:
 - ca - Target claster address.
 - fi - FS info.
@@ -101,6 +111,8 @@ cluster_val_t read_fat(cluster_addr_t ca, fat_data_t* fi);
 /*
 Write 4 bytes to FAT for target cluster.
 Note: Will sync all FAT copies.
+[Thread-safe]
+
 Params:
 - ca - Target claster address.
 - fi - FS info.

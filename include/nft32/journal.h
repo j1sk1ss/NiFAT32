@@ -70,6 +70,8 @@ typedef struct {
 
 /*
 Restore all saved actions from journal. Will restore cluster_size / sizeof(journal_entry_t) actions.
+[Thread-safe]
+
 Params:
 - fi - FS data.
 
@@ -80,6 +82,8 @@ int restore_from_journal(fat_data_t* fi);
 
 /*
 Add entry operation to journal.
+[Thread-safe]
+
 Params:
 - op - Operation type (ADD_OP, DEL_OP, EDIT_OP, NO_OP (reserved)).
 - ca - Cluster where entry placed.
@@ -94,6 +98,8 @@ int journal_add_operation(unsigned char op, cluster_addr_t ca, int offset, unsqu
 
 /*
 Mark journal entry as solved.
+[Thread-safe]
+
 Params:
 - index - Journal entry index.
 - fi - FS data.

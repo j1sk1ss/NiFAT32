@@ -111,6 +111,8 @@ typedef struct {
 
 /*
 Load general information.
+[Thread-safe]
+
 Returns the main structure by value.
 */
 fat_data_t NIFAT32_get_fs_data();
@@ -120,6 +122,8 @@ Init function.
 Note: This function also init memory manager.
 Note 2: For noise-immunity purpuses for initialization of NIFAT32 we
 should know end count of sectors.
+[Thread-safe]
+
 Params:
 - `params` - NIFAT32 setup params.
 
@@ -132,6 +136,8 @@ int NIFAT32_init(nifat32_params_t* params);
 Restore bootsectors on mount image.
 Note: Will create a new bootsector from current info from RAM. 
 Note 2: This function will rewrite all existed copies on image.
+[Thread-safe]
+
 Returns 1.
 */
 int NIFAT32_repair_bootsectors();
@@ -139,18 +145,24 @@ int NIFAT32_repair_bootsectors();
 /*
 Restore file allocation table and all its copies with majority voting approach.
 Won't delete the data, but also won't work if there is too many errors in a table.
+[Thread-safe]
+
 Returns 1.
 */
 int NIFAT32_repair_fat();
 
 /*
 Unload sequence. Perform all cleanup tasks.
+[Thread-safe]
+
 Return 1.
 */
 int NIFAT32_unload();
 
 /*
 Checks if a content by the provided path exists.
+[Thread-safe]
+
 Return 1 if content exists.
 Return 0 if content not exists.
 */
@@ -182,6 +194,8 @@ int NIFAT32_content_exists(const char* path);
 #define NO_RCI -1
 /*
 Open content to content table.
+[Thread-safe]
+
 Params:
 - `rci` - Root content index. If we don't want to search in entire file system.
           Note: By default use NO_RCI
@@ -197,6 +211,8 @@ ci_t NIFAT32_open_content(const ci_t rci, const char* path, unsigned char mode);
 
 /*
 Get summary info about content.
+[Thread-safe]
+
 Params:
 - `ci` - Content index.
 - `info` - Pointer to info struct that will be filled by info.
@@ -210,6 +226,8 @@ int NIFAT32_stat_content(const ci_t ci, cinfo_t* info);
 Change meta data of content.
 Note: This function will change creation date, file and extention.
 Note 2: This function can't change filesize and base cluster.
+[Thread-safe]
+
 Params:
 - `ci` - Targer content index.
 - `info` - New meta data.
@@ -226,6 +244,8 @@ Note: This function don't check buffer and it's address.
 Note 2: If offset larger then content size, function will return buff_size.
 Note 3: If ci is ci of directory, will return raw directory info. For working with this info
 use directory_entry_t.
+[Thread-safe]
+
 Params:
 - `ci` - Target content index.
 - `offset` - Offset in content.
@@ -240,6 +260,8 @@ int NIFAT32_read_content2buffer(const ci_t ci, cluster_offset_t offset, buffer_t
 Write data from buffer to content. 
 Note: This function don't check buffer and it's address.
 Note 2: If offset larger then content size, function will return data_size.
+[Thread-safe]
+
 Params:
 - `ci` - Target content index.
 - `offset` - Offset in content.
@@ -253,6 +275,8 @@ int NIFAT32_write_buffer2content(const ci_t ci, cluster_offset_t offset, const_b
 /*
 Trancate content will change occupied size of content.
 Note: Will save data in result clusters.
+[Thread-safe]
+
 Params:
 - `ci` - Target content index.
 - `offset` - Trancate offset in bytes.
@@ -265,6 +289,8 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size);
 
 /*
 Index content directory for improving search speed.
+[Thread-safe]
+
 - `ci` - Content index.
 
 Return 1 if index was success.
@@ -274,6 +300,8 @@ int NIFAT32_index_content(const ci_t ci);
 
 /*
 Close content from table and release all resources.
+[Thread-safe]
+
 Params:
 - `ci` - Content index.
 
@@ -285,6 +313,8 @@ int NIFAT32_close_content(ci_t ci);
 #define NO_RESERVE  1
 /*
 Add content to target content index. 
+[Thread-safe]
+
 Params:
 - `ci` - Root content index. Should be directory. 
          Note: Can't be the `NO_RCI`. Use the open function with the NO_RCI 
@@ -309,6 +339,8 @@ Note: deep parametr can set copy type:
 Note 1: Shallow copy won't create a new name, which means you *must* ensure, that the
         shallow copy placed somewhere not in the same directory with the source.
 Note 2: NIFAT32_copy_content will deallocate all previous data in dst.
+[Thread-safe]
+
 Params:
 - `src` - Source content index.
 - `dst` - Destination content index.
@@ -322,6 +354,8 @@ int NIFAT32_copy_content(const ci_t src, const ci_t dst, char deep);
 /*
 Delete content by content index.
 Note: This function will close this content.
+[Thread-safe]
+
 Params:
 - `ci` - Content index.
 
@@ -334,6 +368,8 @@ int NIFAT32_delete_content(ci_t ci);
 Repair content by reading, unpacking (error correcting) and writing to disk.
 Note: Will read, correct and write all directry entries in content.
 Note 2: This function will ignore file entries.
+[Thread-safe]
+
 Params:
 - `ci` - Content index.
 - `rec` - Recursive.
@@ -346,6 +382,7 @@ int NIFAT32_repair_content(const ci_t ci, int rec);
 /*
 Get last registered error. Error registration based on ring buffer with maxim unhandled errors
 count equals CLUSTER_SIZE / sizeof(unsigned int)
+[Thread-safe]
 
 Returns -1 if there is no registered errors.
 Returns error code of last occured error.

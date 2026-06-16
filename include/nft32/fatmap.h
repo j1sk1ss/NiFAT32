@@ -36,10 +36,34 @@ typedef unsigned int bitmap_val_t;
 
 #define BITS_PER_WORD (sizeof(bitmap_val_t) * 8)
 
+/*
+Initialize the free-cluster bitmap.
+[Thread-safe]
+*/
 int fatmap_init(fat_data_t* fi);
+
+/*
+Mark cluster as free in the bitmap.
+[Thread-safe]
+*/
 int fatmap_set(unsigned int ca);
+
+/*
+Mark cluster as occupied in the bitmap.
+[Thread-safe]
+*/
 int fatmap_unset(unsigned int ca);
+
+/*
+Find a free cluster range in the bitmap.
+[Thread-safe]
+*/
 unsigned int fatmap_find_free(unsigned int offset, int size, fat_data_t* fi);
+
+/*
+Release the free-cluster bitmap.
+[Thread-safe]
+*/
 int fatmap_unload();
 
 #ifdef __cplusplus

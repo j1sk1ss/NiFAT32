@@ -183,18 +183,27 @@ int DSK_writeoff_sectors(sector_addr_t sa, sector_offset_t offset, const unsigne
 
 int DSK_copy_sectors(sector_addr_t src, sector_addr_t dst, int sc, unsigned char* buffer, int buff_size) {
 #ifndef NIFAT32_RO
+    if (!_lock_area(src, sc, READ_LOCK)) {
+        print_error("Can't read-lock area sa=%u sc=%i", src, sc);
+        return 0;
+    }
+
     if (_lock_area(dst, sc, WRITE_LOCK)) {
         int copy_result = 0;
         for (int i = 0; i < sc; i++) {
-            int readden = _disk_io.read_sector(src, i, buffer, buff_size);
+            int readden = _disk_io.read_sector(src + i, 0, buffer, buff_size);
             if (!readden) {
                 print_error("Copy error! Can't read data! src=%u, dst=%u, sc=%i", src, dst, sc);
+                _unlock_area(dst, sc);
+                _unlock_area(src, sc);
                 return 0;
             }
             
-            int written = _disk_io.write_sector(dst, i, buffer, buff_size);
+            int written = _disk_io.write_sector(dst + i, 0, buffer, buff_size);
             if (!written) {
                 print_error("Copy error! Can't write a copied data! src=%u, dst=%u, sc=%i", src, dst, sc);
+                _unlock_area(dst, sc);
+                _unlock_area(src, sc);
                 return 0;
             }
 
@@ -202,10 +211,12 @@ int DSK_copy_sectors(sector_addr_t src, sector_addr_t dst, int sc, unsigned char
         }
 
         _unlock_area(dst, sc);
+        _unlock_area(src, sc);
         return copy_result;
     }
     else {
-        print_error("Can't read-lock area sa=%u sc=1", dst);
+        _unlock_area(src, sc);
+        print_error("Can't write-lock area sa=%u sc=%i", dst, sc);
     }
 
     return 0;

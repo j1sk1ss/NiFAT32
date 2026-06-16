@@ -9,6 +9,7 @@ Description:
 Dependencies:
     - std/hamming.h - Encoded error data helpers.
     - std/errcodes.h - Error code enumeration.
+    - std/threading.h - Error ring locks.
     - nft32/disk.h - Sector I/O primitives.
     - nft32/fatinfo.h - FAT filesystem metadata.
 */
@@ -21,6 +22,7 @@ extern "C" {
 
 #include <std/hamming.h>
 #include <std/errcodes.h>
+#include <std/threading.h>
 #include <nft32/disk.h>
 #include <nft32/fatinfo.h>
 
@@ -37,8 +39,22 @@ typedef struct {
     unsigned short last_error;
 } errors_t;
 
+/*
+Load persistent error ring state.
+[Thread-safe]
+*/
 int errors_setup(fat_data_t* fi);
+
+/*
+Append a new persistent error code.
+[Thread-safe]
+*/
 int errors_register_error(error_code_t code, fat_data_t* fi);
+
+/*
+Read and consume the oldest persistent error code.
+[Thread-safe]
+*/
 error_code_t errors_last_error(fat_data_t* fi);
 
 #ifdef __cplusplus

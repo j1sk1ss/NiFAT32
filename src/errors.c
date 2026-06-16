@@ -1,5 +1,6 @@
 #include <nft32/errors.h>
 
+static lock_t _errors_lock = NULL_LOCK;
 static errors_t _errors = {
     .first_error = 1,
     .current     = 1,
@@ -109,7 +110,10 @@ static int _load_info(errors_t* i, fat_data_t* fi) {
 
 int errors_setup(fat_data_t* fi) {
 #ifndef NIFAT32_NO_ERROR
-    return _load_info(&_errors, fi);
+    if (!THR_require_write(&_errors_lock, get_thread_num())) return 0;
+    int result = _load_info(&_errors, fi);
+    THR_release_write(&_errors_lock, get_thread_num());
+    return result;
 #else
     return 1;
 #endif
@@ -126,7 +130,9 @@ static inline unsigned int _next_ring_index(unsigned int idx, fat_data_t* fi) {
 int errors_register_error(error_code_t code, fat_data_t* fi) {
 #ifndef NIFAT32_NO_ERROR
     print_debug("errors_register_error(code=%i)", code);
+    if (!THR_require_write(&_errors_lock, get_thread_num())) return 0;
     if (!_write_error(_errors.current, code, fi)) {
+        THR_release_write(&_errors_lock, get_thread_num());
         return 0;
     }
 
@@ -137,7 +143,9 @@ int errors_register_error(error_code_t code, fat_data_t* fi) {
 
     _errors.current    = next;
     _errors.last_error = _errors.current;
-    return _dump_info(&_errors, fi);
+    int result = _dump_info(&_errors, fi);
+    THR_release_write(&_errors_lock, get_thread_num());
+    return result;
 #else
     return 1;
 #endif
@@ -146,18 +154,22 @@ int errors_register_error(error_code_t code, fat_data_t* fi) {
 error_code_t errors_last_error(fat_data_t* fi) {
 #ifndef NIFAT32_NO_ERROR
     print_debug("errors_last_error()");
+    if (!THR_require_write(&_errors_lock, get_thread_num())) return -1;
     if (_errors.first_error == _errors.last_error) {
         print_warn("No errors!");
+        THR_release_write(&_errors_lock, get_thread_num());
         return -1;
     }
 
     error_code_t c;
     if (!_read_error(_errors.first_error, &c, fi)) {
+        THR_release_write(&_errors_lock, get_thread_num());
         return -1;
     }
 
     _errors.first_error = _next_ring_index(_errors.first_error, fi);
     _dump_info(&_errors, fi);
+    THR_release_write(&_errors_lock, get_thread_num());
     return c;
 #else
     return NO_ERROR;

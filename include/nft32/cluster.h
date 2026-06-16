@@ -60,6 +60,8 @@ cluster_addr_t alloc_cluster(fat_data_t* fi);
 
 /*
 Mark cluster as <FREE>.
+[Thread-safe]
+
 Params:
 - `ca` - Cluster address.
 - `fi` - FS data.
@@ -71,6 +73,8 @@ int dealloc_cluster(const cluster_addr_t ca, fat_data_t* fi);
 
 /*
 Deallocate entier cluster chain from start to <END>.
+[Thread-safe]
+
 Params:
 - `ca` - Start cluster in chain.
 - `fi` - FS data.
@@ -82,6 +86,8 @@ int dealloc_chain(cluster_addr_t ca, fat_data_t* fi);
 
 /*
 Read data from cluster with offset.
+[Thread-safe]
+
 Params:
 - `offset` - Offset in cluster (Should be lower than spc * sector_size).
 - `ca` - Cluster address.
@@ -97,6 +103,8 @@ int readoff_cluster(
 
 /*
 Read data from cluster.
+[Thread-safe]
+
 Params:
 - `ca` - Cluster address.
 - `buffer` - Pointer where function will store data.
@@ -109,6 +117,8 @@ int read_cluster(cluster_addr_t ca, buffer_t __restrict buffer, int buff_size, f
 
 /*
 Write data to cluster with offset.
+[Thread-safe]
+
 Params:
 - `ca` - Cluster address.
 - `offset` - Offset in cluster (Should be lower than spc * sector_size).
@@ -124,6 +134,8 @@ int writeoff_cluster(
 
 /*
 Write data to cluster.
+[Thread-safe]
+
 Params:
 - `ca` - Cluster address.
 - `buffer` - Pointer where function will take data for write.
@@ -137,6 +149,8 @@ int write_cluster(cluster_addr_t ca, const_buffer_t __restrict data, int data_si
 /*
 Copy source cluster content to destination cluster.
 Note: copy buffer should be greater or equals to sector size.
+[Thread-safe]
+
 Params:
 - `src` - Source cluster.
 - `dst` - Destination cluster.

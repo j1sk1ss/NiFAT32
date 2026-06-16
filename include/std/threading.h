@@ -30,37 +30,56 @@ extern "C" {
 #define REQUIRE_TIME 99999
 #define MAX_READERS  255
 
-#define OWNER_MASK        0x3FFF
-#define STATUS_MASK       0x0001
+#define OWNER_MASK        0xFFFF
+#define STATUS_MASK       LOCK_WRITE_FLAG
 #define LOCK_READERS_MASK 0x000000FF
 #define LOCK_WRITE_FLAG   0x00000100
 #define LOCK_OWNER_MASK   0xFFFF0000
 
-#define LOCK_IS_WRITE(lock)    (((lock) & STATUS_MASK) == LOCKED_WRITE)
-#define LOCK_GET_STATUS(lock)  (((lock) >> 8) & 0x1)
+#define LOCK_IS_WRITE(lock)    (((lock) & LOCK_WRITE_FLAG) != 0)
+#define LOCK_GET_STATUS(lock)  (LOCK_IS_WRITE(lock) ? LOCKED_WRITE : UNLOCKED)
 #define LOCK_GET_READERS(lock) (((lock) >> 0) & 0xFF)
 #define LOCK_GET_OWNER(lock)   (((lock) & LOCK_OWNER_MASK) >> 16)
 
 #define LOCK_PACK(readers, is_write, owner) \
-    (((readers) & 0xFF) | ((is_write ? 1 : 0) << 8) | ((owner & 0xFFFF) << 16))
+    (((readers) & LOCK_READERS_MASK) | ((is_write ? 1 : 0) << 8) | (((owner) & OWNER_MASK) << 16))
 
 #define NULL_LOCK LOCK_PACK(0, 0, NO_OWNER)
 
 /* This function is platform-specific. If NiFAT32 planned to work in thread context,
 re-define this function for getting thread uniq id. */
-#ifndef get_thread_num()
+#ifndef get_thread_num
     #define get_thread_num() 0
 #endif
-#ifndef sched_yield()
+#ifndef sched_yield
     #define sched_yield() (void)0
 #endif
 
 typedef volatile unsigned int lock_t;
 typedef unsigned short        owner_t;
 
+/*
+Acquire a shared read lock.
+[Thread-safe]
+*/
 int THR_require_read(lock_t* lock);
+
+/*
+Release a shared read lock.
+[Thread-safe]
+*/
 int THR_release_read(lock_t* lock);
+
+/*
+Acquire an exclusive write lock for the provided owner.
+[Thread-safe]
+*/
 int THR_require_write(lock_t* lock, owner_t owner);
+
+/*
+Release an exclusive write lock held by the provided owner.
+[Thread-safe]
+*/
 int THR_release_write(lock_t* lock, owner_t owner);
 
 #ifdef __cplusplus

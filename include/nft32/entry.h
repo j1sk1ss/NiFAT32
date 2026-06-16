@@ -89,6 +89,8 @@ Base iterate function in cluster.
 Params:
 - ca - Cluster address.
 - handler - Directory entry handler with context.
+            Note: If handler returns 0 - iteration will stop after 
+                  it will find the target entry.
 - ctx - Context for function.
 - fi - FS data.
 

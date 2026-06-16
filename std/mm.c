@@ -53,13 +53,14 @@ lock_t _malloc_lock = NULL_LOCK;
 static void* __malloc_s(unsigned long size, unsigned int offset, int prepare_mem) {
 #ifndef NON_DEFAULT_MM_MANAGER
     if (!size) return NULL;
-    if (prepare_mem) __coalesce_memory();
 
     size   = (size + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
     offset = (offset + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-    mm_block_t* current = _mm_head;
     
     if (THR_require_write(&_malloc_lock, get_thread_num())) {
+        if (prepare_mem) __coalesce_memory();
+
+        mm_block_t* current = _mm_head;
         while (current && current->magic == MM_BLOCK_MAGIC) {
             void* aligned_addr = (unsigned char*)current + sizeof(mm_block_t);
             unsigned int position = (unsigned int)((unsigned char*)aligned_addr - _buffer);
@@ -120,21 +121,29 @@ static void _free_s(void* ptr) {
         print_mm("ptr=%p is not valid!", ptr);
         return;
     }
+
+    if (!THR_require_write(&_malloc_lock, get_thread_num())) {
+        print_error("Can't lock _malloc_lock!");
+        return;
+    }
     
     mm_block_t* block = (mm_block_t*)((unsigned char*)ptr - sizeof(mm_block_t));
     if (block->magic != MM_BLOCK_MAGIC) {
         print_mm("ptr=%p point to block with incorrect magic=%u!", ptr, block->magic);
+        THR_release_write(&_malloc_lock, get_thread_num());
         return;
     }
 
     if (block->free) {
         print_mm("ptr=%p point to already freed block!", ptr);
+        THR_release_write(&_malloc_lock, get_thread_num());
         return;
     }
 
     block->free = 1;
     _allocated -= block->size + sizeof(mm_block_t);
     print_mm("Free [%p] with [%i] size / [%i]", ptr, block->size, _allocated);
+    THR_release_write(&_malloc_lock, get_thread_num());
     return;
 #endif
     UNUSED(ptr);

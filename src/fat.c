@@ -1,16 +1,23 @@
 #include <nft32/fat.h>
 
 static cluster_val_t* _fat = NULL;
+static lock_t _fat_lock = NULL_LOCK;
+
 int fat_cache_init(fat_data_t* fi) {
 #ifndef NO_FAT_CACHE
+    if (_fat) return 1;
+    if (!THR_require_write(&_fat_lock, get_thread_num())) return 0;
+
     _fat = (cluster_val_t*)nft32_malloc_s(fi->total_clusters * sizeof(cluster_val_t));
     if (!_fat) {
+        THR_release_write(&_fat_lock, get_thread_num());
         print_error("nft32_malloc_s() error!");
         errors_register_error(MALLOC_ERROR, fi);
         return 0;
     }
 
     for (cluster_addr_t ca = 0; ca < fi->total_clusters; ca++) _fat[ca] = FAT_CLUSTER_BAD;
+    THR_release_write(&_fat_lock, get_thread_num());
     return 1;
 #endif
     UNUSED(fi);
@@ -25,7 +32,6 @@ int fat_cache_hload(fat_data_t* fi) {
         cluster_val_t cls = read_fat(ca, fi);
         if (cls == FAT_CLUSTER_FREE) fatmap_set(ca);
         else fatmap_unset(ca);
-        _fat[ca] = cls;
     }
 
     return 1;
@@ -37,8 +43,10 @@ int fat_cache_hload(fat_data_t* fi) {
 
 int fat_cache_unload() {
 #ifndef NO_FAT_CACHE
-    if (_fat) nft32_free_s(_fat);
-    else return 0;
+    if (!_fat || !THR_require_write(&_fat_lock, get_thread_num())) return 0;
+    nft32_free_s(_fat);
+    _fat = NULL;
+    THR_release_write(&_fat_lock, get_thread_num());
     return 1;
 #endif
     print_warn("fat_cache_unload() is not implemented! Don't provide the 'NO_FAT_CACHE'!");
@@ -70,23 +78,37 @@ static int __write_fat__(cluster_addr_t ca, cluster_status_t value, fat_data_t* 
 
     return 1;    
 } 
+
+/* Move part which doesn't lock anything 'cause we have to write not only 
+   in the write function, but also in the read function as well. In read 
+   function we've locked the mutex, and can't lock it one more time. */
+static inline int _write_fat_locked(cluster_addr_t ca, cluster_status_t value, fat_data_t* fi) {
+    if (_fat) _fat[ca] = value;
+    if (value == FAT_CLUSTER_FREE) fatmap_set(ca);
+    else fatmap_unset(ca);
+    int result = 1;
+    for (int i = 0; i < fi->fat_count; i++) result = __write_fat__(ca, value, fi, i) && result;
+    return result;
+}
 #endif
 
 int write_fat(cluster_addr_t ca, cluster_status_t value, fat_data_t* fi) {
 #ifndef NIFAT32_RO
     print_debug("write_fat(ca=%u, value=%u)", ca, value);
-    if (ca < fi->ext_root_cluster || ca > fi->total_clusters) {
+    if (ca < fi->ext_root_cluster || ca >= fi->total_clusters) {
         print_error("Can't write cluster! Wrong cluster address! %u", ca);
         errors_register_error(WRITE_FAT_ERROR, fi);
         return 0;
     }
-    
-    if (_fat) _fat[ca] = value;
-    if (value == FAT_CLUSTER_FREE) fatmap_set(ca);
-    else fatmap_unset(ca);
 
-    int result = 1;
-    for (int i = 0; i < fi->fat_count; i++) result = __write_fat__(ca, value, fi, i) && result;
+    if (!THR_require_write(&_fat_lock, get_thread_num())) {
+        print_error("Can't write-lock FAT!");
+        errors_register_error(WRITE_FAT_ERROR, fi);
+        return 0;
+    }
+
+    int result = _write_fat_locked(ca, value, fi);
+    THR_release_write(&_fat_lock, get_thread_num());
     return result;
 #endif
     UNUSED(ca, value, fi);
@@ -113,15 +135,23 @@ static cluster_val_t __read_fat__(cluster_addr_t ca, fat_data_t* fi, int fat) {
 
 cluster_val_t read_fat(cluster_addr_t ca, fat_data_t* fi) {
     print_debug("read_fat(ca=%u)", ca);
-    if (ca < fi->ext_root_cluster || ca > fi->total_clusters) {
+    if (ca < fi->ext_root_cluster || ca >= fi->total_clusters) {
         print_error("Can't read cluster! Wrong cluster address! %u", ca);
+        errors_register_error(READ_FAT_ERROR, fi);
+        return FAT_CLUSTER_BAD;
+    }
+
+    if (!THR_require_write(&_fat_lock, get_thread_num())) {
+        print_error("Can't write-lock FAT!");
         errors_register_error(READ_FAT_ERROR, fi);
         return FAT_CLUSTER_BAD;
     }
 
     if (_fat && _fat[ca] != FAT_CLUSTER_BAD) {
         print_debug("cached read_fat(ca=%u) -> %u", ca, _fat[ca]);
-        return _fat[ca];
+        cluster_val_t cached = _fat[ca];
+        THR_release_write(&_fat_lock, get_thread_num());
+        return cached;
     }
 
     int wrong = -1;
@@ -147,9 +177,10 @@ cluster_val_t read_fat(cluster_addr_t ca, fat_data_t* fi) {
 
     if (wrong > 0) {
         print_warn("FAT wrong value at ca=%u. Fixing to val=%u...", ca, table_value);
-        write_fat(ca, table_value, fi);
+        _write_fat_locked(ca, table_value, fi);
     }
 
     print_debug("read_fat(ca=%u) -> %u", ca, table_value);
+    THR_release_write(&_fat_lock, get_thread_num());
     return table_value;
 }

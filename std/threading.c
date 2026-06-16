@@ -14,7 +14,7 @@ int THR_require_read(lock_t* lock) {
 
         unsigned short readers = LOCK_GET_READERS(old_val);
         if (readers >= MAX_READERS) return 0;
-        lock_t new_val = LOCK_PACK(readers + 1, UNLOCKED, 0);
+        lock_t new_val = LOCK_PACK(readers + 1, UNLOCKED, NO_OWNER);
         if (__sync_bool_compare_and_swap(lock, old_val, new_val))
             return 1;
     }
@@ -35,7 +35,7 @@ int THR_release_read(lock_t* lock) {
         unsigned short readers = LOCK_GET_READERS(old_val);
         if (readers == 0) return 0;
 
-        lock_t new_val = LOCK_PACK(readers - 1, UNLOCKED, 0);
+        lock_t new_val = readers == 1 ? NULL_LOCK : LOCK_PACK(readers - 1, UNLOCKED, NO_OWNER);
         if (__sync_bool_compare_and_swap(lock, old_val, new_val))
             return 1;
     }
