@@ -1,6 +1,7 @@
 #include <std/threading.h>
 
 int THR_require_read(lock_t* lock) {
+#ifndef NO_THREADSAFE
     if (!lock) return 0;
     int delay = REQUIRE_TIME;
 
@@ -19,9 +20,13 @@ int THR_require_read(lock_t* lock) {
     }
 
     return 0;
+#endif
+    UNUSED(lock);
+    return 1;
 }
 
 int THR_release_read(lock_t* lock) {
+#ifndef NO_THREADSAFE
     if (!lock) return 0;
     while (1) {
         lock_t old_val = *lock;
@@ -34,11 +39,14 @@ int THR_release_read(lock_t* lock) {
         if (__sync_bool_compare_and_swap(lock, old_val, new_val))
             return 1;
     }
+#endif
+    UNUSED(lock);
+    return 1;
 }
 
 int THR_require_write(lock_t* lock, owner_t owner) {
+#ifndef NO_THREADSAFE
     if (!lock) return 0;
-
     int delay = REQUIRE_TIME;
     while (delay-- > 0) {
         lock_t old_val = *lock;
@@ -52,9 +60,13 @@ int THR_require_write(lock_t* lock, owner_t owner) {
     }
 
     return 0;
+#endif
+    UNUSED(lock, owner);
+    return 1;
 }
 
 int THR_release_write(lock_t* lock, owner_t owner) {
+#ifndef NO_THREADSAFE
     if (!lock) return 0;
     while (1) {
         lock_t old_val = *lock;
@@ -63,4 +75,7 @@ int THR_release_write(lock_t* lock, owner_t owner) {
         if (__sync_bool_compare_and_swap(lock, old_val, NULL_LOCK))
             return 1;
     }
+#endif
+    UNUSED(lock, owner);
+    return 1;
 }

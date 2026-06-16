@@ -18,7 +18,9 @@ extern "C" {
 
 #include <std/str.h>
 
-#define PATH_SPLITTER '/'
+#ifndef PATH_SPLITTER
+    #define PATH_SPLITTER '/'
+#endif
 
 /*
 Convert fatname 8.3 to default name and ext.

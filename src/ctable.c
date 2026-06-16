@@ -133,10 +133,15 @@ int destroy_content(ci_t ci) {
         ci >= CONTENT_TABLE_SIZE || ci < 0 ||
         (_content_table[ci].content_type == CONTENT_TYPE_EMPTY)
     ) return 0;
-    if (_content_table[ci].index.root) ecache_free(_content_table[ci].index.root);
-    _content_table[ci].content_type = CONTENT_TYPE_EMPTY;
-    _content_table[ci].index.root   = NO_ECACHE;
-    return 1;
+    if (THR_require_write(&_content_lock, get_thread_num())) {
+        if (_content_table[ci].index.root) ecache_free(_content_table[ci].index.root);
+        _content_table[ci].content_type = CONTENT_TYPE_EMPTY;
+        _content_table[ci].index.root   = NO_ECACHE;
+        THR_release_write(&_content_lock, get_thread_num());
+        return 1;
+    }
+
+    return 0;
 }
 
 int ctable_destroy() {

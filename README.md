@@ -1,37 +1,32 @@
 # NiFAT32
 
-NiFAT32 is a FAT32-like filesystem designed to tolerate single-event and multiple-event upsets. It protects boot sectors, FAT entries, directory entries, journals, and persistent error records with redundant copies, checksums, voting, and Hamming encoding.
-
-NiFAT32 is not wire-compatible with a regular FAT32 implementation. Images must be accessed through this library or compatible firmware.
+NiFAT32 is a FAT32-like filesystem designed to tolerate single-event and multiple-event upsets. It protects boot sectors, FAT entries, directory entries, journals, and persistent error records with redundant copies, checksums, voting, and Hamming encoding. </br>
+P.S.: *NiFAT32 is not wire-compatible with a regular FAT32 implementation. Images must be accessed through this library or compatible firmware.*
 
 ## Reference Footprint
 
 The following measurements were produced on Fedora Linux x86-64 with GCC 15.2.1 and GNU Binutils 2.45.1.
 
-### Flag Impact
+### Flags
 
-Each row below adds or changes only the option shown, while retaining the configuration from the previous row. This makes the effect of individual build choices visible.
+P.S.: *All rows use `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections`*.
 
-All rows use `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections`.
-
-| Step | Added or changed option | ROM | ROM change | Static RAM | RAM change | Stripped ELF |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | Default `-O2` build | 41.2 KiB | - | 505.2 KiB | - | 47.1 KiB |
-| 2 | `NIFAT32_RO=1` | 32.5 KiB | -8.7 KiB | 505.1 KiB | -0.1 KiB | 39.0 KiB |
-| 3 | `NO_HEAP=1` | 32.5 KiB | 0.0 KiB | 505.1 KiB | 0.0 KiB | 39.0 KiB |
-| 4 | `NO_DEFAULT_MM_MANAGER=1` | 32.0 KiB | -0.5 KiB | 5.1 KiB | -500.0 KiB | 39.0 KiB |
-| 5 | `NIFAT32_NO_ERROR=1` | 30.8 KiB | -1.2 KiB | 5.0 KiB | -0.1 KiB | 39.0 KiB |
-| 6 | `NO_ENTRY_VALIDATION=1` | 30.7 KiB | -0.1 KiB | 5.0 KiB | 0.0 KiB | 39.0 KiB |
-| 7 | `CONTENT_TABLE_SIZE=8 IO_THREADS_MAX=4` | 30.4 KiB | -0.3 KiB | 1.8 KiB | -3.2 KiB | 38.7 KiB |
-| 8 | `CONTENT_TABLE_SIZE=1 IO_THREADS_MAX=1` | 29.9 KiB | -0.5 KiB | 1.3 KiB | -0.5 KiB | 38.7 KiB |
-| 9 | Explicit `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` | 24.0 KiB | -5.8 KiB | 1.3 KiB | less than -0.1 KiB | 30.6 KiB |
-| 10 | Change `-O2` to `-Os` | 20.7 KiB | -3.4 KiB | 1.2 KiB | less than -0.1 KiB | 26.6 KiB |
-| 11 | Change `-Os` to `-Oz` | 20.4 KiB | -0.3 KiB | 1.2 KiB | 0.0 KiB | 26.6 KiB |
-| 12 | Add `-flto` to compile and link flags | **20.3 KiB** | less than -0.1 KiB | **1.3 KiB** | less than +0.1 KiB | 26.6 KiB |
+| Flags | ROM | ROM change | Static RAM | RAM change | Stripped ELF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `-O2` | 41.2 KiB | - | 505.2 KiB | - | 47.1 KiB |
+| + `NIFAT32_RO=1` | 32.5 KiB | -8.7 KiB | 505.1 KiB | -0.1 KiB | 39.0 KiB |
+| + `NO_HEAP=1` | 32.5 KiB | 0.0 KiB | 505.1 KiB | 0.0 KiB | 39.0 KiB |
+| + `NO_DEFAULT_MM_MANAGER=1` | 32.0 KiB | -0.5 KiB | 5.1 KiB | -500.0 KiB | 39.0 KiB |
+| + `NIFAT32_NO_ERROR=1` | 30.8 KiB | -1.2 KiB | 5.0 KiB | -0.1 KiB | 39.0 KiB |
+| + `NO_ENTRY_VALIDATION=1` | 30.7 KiB | -0.1 KiB | 5.0 KiB | 0.0 KiB | 39.0 KiB |
+| + `CONTENT_TABLE_SIZE=8 IO_THREADS_MAX=4` | 30.4 KiB | -0.3 KiB | 1.8 KiB | -3.2 KiB | 38.7 KiB |
+| + `CONTENT_TABLE_SIZE=1 IO_THREADS_MAX=1` | 29.9 KiB | -0.5 KiB | 1.3 KiB | -0.5 KiB | 38.7 KiB |
+| + `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` | 24.0 KiB | -5.8 KiB | 1.3 KiB | less than -0.1 KiB | 30.6 KiB |
+| `-Os` | 20.7 KiB | -3.4 KiB | 1.2 KiB | less than -0.1 KiB | 26.6 KiB |
+| `-Oz` | 20.4 KiB | -0.3 KiB | 1.2 KiB | 0.0 KiB | 26.6 KiB |
+| + `-flto` | **20.3 KiB** | less than -0.1 KiB | **1.3 KiB** | less than +0.1 KiB | 26.6 KiB |
 
 The exact minimum measured values are 20,809 bytes of `text + data` and 1,308 bytes of `data + bss`. LTO reduced ROM by another 36 bytes, although the rounded KiB value remains almost unchanged.
-
-`NO_HEAP=1` is intended to imply the three cache-disabling macros, but those derived definitions currently live in `nifat32.h` and do not propagate to the separately compiled `src/*.c` translation units. This is why step 3 has no measurable effect in the root Makefile build and why step 9 passes the three flags explicitly. Likewise, the large RAM reduction in step 4 comes specifically from `NO_DEFAULT_MM_MANAGER=1`.
 
 ### Maximum Profile
 
@@ -70,33 +65,20 @@ make shared \
   IO_LOGS=1 MEM_LOGS=1 LOGGING_LOGS=1 SPECIAL_LOGS=1
 ```
 
-The minimum profile preserves the public API but is intentionally limited: storage mutations are no-ops, only one content index can be open, only one I/O area can be locked, and allocator memory must be supplied by the platform. The maximum row means the largest tested feature/debug build with default numeric limits; `ALLOC_BUFFER_SIZE` can be increased separately and would make static RAM arbitrarily larger.
-
-`ROM estimate` is `text + data`, while `Static RAM` is `data + bss`, as
-reported by:
-
-```bash
-size builds/nifat32.so
-cp builds/nifat32.so builds/nifat32.stripped.so
-strip --strip-unneeded builds/nifat32.stripped.so
-```
-
 These numbers do not include thread stacks, temporary stack buffers, or memory supplied by a custom allocator. With the built-in allocator, its entire pool is counted in `.bss` even when only part of it is used at runtime. The default static RAM is therefore dominated by the 500 KiB `ALLOC_BUFFER_SIZE`. For the current root build, pass `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` explicitly to disable heap-backed caches, and use a smaller `ALLOC_BUFFER_SIZE` or `NO_DEFAULT_MM_MANAGER=1` to remove the large built-in pool.
-
-Stripping removes symbol and relocation metadata from the ELF file, but does not reduce the loaded `text`, `data`, or `bss` sections shown by `size`. `-O2` provides a middle ground between speed and size. `-O3` produced larger code in this project. GCC `-Oz` with LTO produced the smallest measured ROM; use `-Os` instead when the target compiler does not support `-Oz`.
 
 ## Building
 
 The root Makefile tracks header dependencies and rebuilds objects when build options change.
 
 ```bash
-make                 # builds/nifat32.so
-make static          # builds/nifat32.a
-make unix            # builds/unix_nifat32
-make formatter       # formatter/formatter
-make tools           # formatter and Unix utility
-make clean           # remove root build artifacts
-make distclean       # also clean the formatter
+make           # builds/nifat32.so
+make static    # builds/nifat32.a
+make unix      # builds/unix_nifat32
+make formatter # formatter/formatter
+make tools     # formatter and Unix utility
+make clean     # remove root build artifacts
+make distclean # also clean the formatter
 make help
 ```
 
@@ -123,6 +105,7 @@ Boolean Make variables accept `0` or `1` and default to `0`.
 | `NO_FAT_CACHE` | `NO_FAT_CACHE` | Disables the in-memory FAT value cache |
 | `NO_FAT_MAP` | `NO_FAT_MAP` | Disables the free-cluster bitmap |
 | `NO_ENTRY_VALIDATION` | `NO_ENTRY_VALIDATION` | Skips directory-entry checksum validation |
+| - | `NO_THREADSAFE` | Make the FS not thread safe (exclude related code from the final binary) |
 
 Numeric configuration variables:
 

@@ -1,5 +1,6 @@
 #include <std/hamming.h>
 
+#ifndef NO_HAMMING
 static encoded_t _encode_hamming_15_11(decoded_t data) {
     encoded_t encoded = 0;
     encoded = SET_BIT(encoded, 2, GET_BIT(data, 0));
@@ -53,17 +54,26 @@ static inline byte_t _get_byte(const decoded_t* ptr, int offset) {
     return (byte_t)_decode_hamming_15_11(ptr[offset]);
 }
 
-static inline int _set_byte(encoded_t* ptr, int offset, byte_t byte) {
+static inline void _set_byte(encoded_t* ptr, int offset, byte_t byte) {
     ptr[offset] = _encode_hamming_15_11((encoded_t)byte);
-    return 1;
 }
+#endif
 
 void* nft32_unpack_memory(const encoded_t* src, byte_t* dst, int l) {
+#ifndef NO_HAMMING
     for (int i = 0; i < l; i++) dst[i] = _get_byte(src, i);
+#else
+    for (int i = 0; i < l; i++) dst[i] = src[i];
+#endif
     return (void*)dst;
+
 }
 
 void* nft32_pack_memory(const byte_t* src, encoded_t* dst, int l) {
+#ifndef NO_HAMMING
     for (int i = 0; i < l; i++) _set_byte(dst, i, src[i]);
+#else 
+    for (int i = 0; i < l; i++) dst[i] = src[i];
+#endif
     return (void*)dst;
 }

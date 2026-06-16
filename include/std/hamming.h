@@ -20,18 +20,24 @@ extern "C" {
 #define SET_BIT(byte, pos, bit) (bit ? (byte | (1 << pos)) : (byte & ~(1 << pos)))
 #define TOGGLE_BIT(byte, pos)   (byte ^ (1 << pos))
 
-typedef unsigned char  byte_t;
-typedef unsigned short encoded_t;
-typedef unsigned short decoded_t;
+#ifndef NO_HAMMING
+    typedef unsigned char  byte_t;
+    typedef unsigned short encoded_t;
+    typedef unsigned short decoded_t;
+#else
+    typedef unsigned char byte_t;
+    typedef unsigned char encoded_t;
+    typedef unsigned char decoded_t;
+#endif
 
 /*
 Unpack memory function should decode src pointed data from hamming 15,11 (With error correction).
 P.S. Before usage, allocate dst memory with size, same as count of elements in src.
 
 Params:
-- src - Source encoded data.
-- dst - Destination for decoded data.
-- l - Element count.
+- `src` - Source encoded data.
+- `dst` - Destination for decoded data.
+- `l` - Element count.
 
 Return pointer to dst.
 */
@@ -42,9 +48,9 @@ Pack memory function should encode src pointed data to hamming 15,11.
 P.S. Before usage, allocate dst memory with size, same as count of elements in src.
 
 Params:
-- src - Source encoded data.
-- dst - Destination for decoded data.
-- l - Element count.
+- `src` - Source encoded data.
+- `dst` - Destination for decoded data.
+- `l` - Element count.
 
 Return pointer to dst.
 */

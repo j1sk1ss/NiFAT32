@@ -65,7 +65,6 @@ int nft32_setup_mm_manager(int (*init)(), void* (*malloc)(unsigned long), void (
 
 /*
 Init first memory block in memory manager.
-
 Return -1 if something goes wrong.
 Return 1 if success init.
 */
@@ -76,7 +75,7 @@ Allocate memory block.
 [Thread-safe]
 
 Params:
-    - size - Memory block size.
+    - `size` - Memory block size.
 
 Return NULL if can't allocate memory.
 Return pointer to allocated memory.
@@ -88,7 +87,7 @@ Free allocated memory.
 [Thread-safe]
 
 Params:
-    - ptr - Pointer to allocated data.
+    - `ptr` - Pointer to allocated data.
 
 Return -1 if something goes wrong.
 Return 1 if free success.

@@ -86,8 +86,8 @@ typedef struct {
 /*
 Logging init.
 Params:
-- fd_fprintf - fprintf function in your platform. Can be NULL (Will disable all logging).
-- fd_vfprintf - vfprintf function in your platform. Can be NULL.
+- `fd_fprintf` - fprintf function in your platform. Can be NULL (Will disable all logging).
+- `fd_vfprintf` - vfprintf function in your platform. Can be NULL.
 
 Return 1 if setup success.
 Return 0 if something goes wrong.
@@ -100,9 +100,9 @@ int LOG_setup(
 /*
 Create log message.
 
-- level - Log level.
-- file - File name.
-- line - Code line number.
+- `level` - Log level.
+- `file` - File name.
+- `line` - Code line number.
 - message - Additional info message.
 */
 int nft32_log_message(const char* level, const char* file, int line, const char* message, ...);

@@ -20,6 +20,8 @@
 extern "C" {
 #endif
 
+#include <std/null.h>
+
 #define LOCKED       0xAB
 #define UNLOCKED     0x00
 #define NO_OWNER     0xFF
@@ -44,12 +46,14 @@ extern "C" {
 
 #define NULL_LOCK LOCK_PACK(0, 0, NO_OWNER)
 
-/*
-This function is platform-specific. If NIFAT32 planned to work in thread context,
-re-define this function for getting thread uniq id.
-*/
-#define get_thread_num() 0
-#define sched_yield()
+/* This function is platform-specific. If NiFAT32 planned to work in thread context,
+re-define this function for getting thread uniq id. */
+#ifndef get_thread_num()
+    #define get_thread_num() 0
+#endif
+#ifndef sched_yield()
+    #define sched_yield() (void)0
+#endif
 
 typedef volatile unsigned int lock_t;
 typedef unsigned short        owner_t;
