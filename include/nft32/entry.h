@@ -42,12 +42,12 @@ extern "C" {
 #define ENTRY_JAPAN          0x05
 #define LAST_LONG_ENTRY      0x40
 
-#define FILE_READ_ONLY 0x01
-#define FILE_HIDDEN    0x02
-#define FILE_SYSTEM    0x04
-#define FILE_VOLUME_ID 0x08
-#define FILE_DIRECTORY 0x10
-#define FILE_ARCHIVE   0x20
+#define FILE_READ_ONLY       0x01
+#define FILE_HIDDEN          0x02
+#define FILE_SYSTEM          0x04
+#define FILE_VOLUME_ID       0x08
+#define FILE_DIRECTORY       0x10
+#define FILE_ARCHIVE         0x20
 
 typedef struct {
     cluster_addr_t ca;

@@ -219,7 +219,7 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
         }
 
         if (is_cluster_end(nca)) {
-            if (is_cluster_bad((nca = alloc_cluster(fi)))) {
+            if (is_cluster_bad((nca = alloc_cluster(fi, NO_CLUSTER_OFFSET)))) {
                 print_error("Allocation of new cluster failed. Aborting...");
                 errors_register_error(CLUSTER_ALLOCATION_ERROR, fi);
                 break;

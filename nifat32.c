@@ -1,6 +1,6 @@
 #include "nifat32.h"
 
-/* Main information about the current NiFAT32 'entity'.
+/* Main information about the current NiFAT32 'instance'.
    Contains data about the root cluster, offsets and general properties. */
 static fat_data_t _fs_data = { 0 };
 static lock_t _fs_api_lock = NULL_LOCK;
@@ -222,7 +222,7 @@ static cluster_addr_t _get_cluster_by_path(
             ecache_t* entry_index = get_content_ecache(curr_ci);
             if (!entry_search(fatname_buffer, active_cluster, entry_index, &current_entry, &_fs_data)) {
                 if (IS_CREATE_MODE(mode)) {
-                    cluster_addr_t nca = alloc_cluster(&_fs_data);
+                    cluster_addr_t nca = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
                     if (set_cluster_end(nca, &_fs_data)) {
                         create_entry(
                             fatname_buffer, path[iterator] || GET_MODE_TARGET(mode) != FILE_TARGET, 
@@ -354,7 +354,7 @@ Params:
 Returns BAD_CLUSTER if something goes wrong or a new allocated cluster. */
 static cluster_addr_t _add_cluster_to_chain(cluster_addr_t hca) {
     print_debug("_add_cluster_to_chain(hca=%i)", hca);
-    cluster_addr_t allocated_cluster = alloc_cluster(&_fs_data);
+    cluster_addr_t allocated_cluster = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
     if (!is_cluster_bad(allocated_cluster)) {
         if (!set_cluster_end(allocated_cluster, &_fs_data)) {
             print_error("Can't set cluster to <END> state!");
@@ -530,13 +530,13 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size) {
     print_warn("NIFAT32_truncate_content() not implemented. Don't provide the 'NIFAT32_RO'!");
     return 1;
 }
-
-int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve) {
+// TODO: Shallow copy creation has a huge overhead/ We need a new function which handles this.
+int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_seed) {
 #ifndef NIFAT32_RO
     FS_API_LOCK_OR_RETURN(0);
-    print_log("NIFAT32_put_content(ci=%i, info=%s, reserve=%i)", ci, info->full_name, reserve);
+    print_log("NIFAT32_put_content(ci=%i, info=%s, reserve=%i, offst_seed=%u)", ci, info->full_name, reserve, offst_seed);
     cluster_addr_t target = get_content_data_ca(ci);
-    ecache_t* entry_cache = get_content_ecache(target);
+    ecache_t* entry_cache = get_content_ecache(ci);
     if (entry_search((char*)info->full_name, target, entry_cache, NULL, &_fs_data)) {
         print_error("entry_search() encountered an error. Aborting...");
         errors_register_error(ENTRY_SEARCH_ERROR, &_fs_data);
@@ -544,7 +544,9 @@ int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve) {
     }
 
     directory_entry_t entry;
-    cluster_addr_t entry_ca = alloc_cluster(&_fs_data);
+    cluster_addr_t entry_ca = alloc_cluster(&_fs_data, offst_seed == -1 ? // TODO: Allocate cluster offset for every instance
+                              NO_CLUSTER_OFFSET : 
+                              GET_CLUSTER_OFF(offst_seed, _fs_data.total_clusters - _fs_data.ext_root_cluster));
     if (!set_cluster_end(entry_ca, &_fs_data)) {
         print_error("set_cluster_end() error!");
         errors_register_error(SET_CLUSTER_END_ERROR, &_fs_data);
@@ -577,7 +579,7 @@ int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve) {
 #ifndef NIFAT32_RO
 static int _deepcopy_handler(entry_info_t* __restrict info __attribute__((unused)), directory_entry_t* __restrict entry, void* ctx) {
     cluster_addr_t old_ca = entry->dca;
-    cluster_addr_t nca = alloc_cluster(&_fs_data);
+    cluster_addr_t nca = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
     cluster_addr_t hca = nca;
     if (set_cluster_end(nca, &_fs_data)) {
         do {
@@ -710,16 +712,14 @@ int NIFAT32_stat_content(const ci_t ci, cinfo_t* info) {
     FS_API_RETURN(result);
 }
 
-/*
-Handler for entry to recursive repair.
+/* Handler for entry to recursive repair.
 Idea is simple: Reading an entry immediately repairs it by the Hamming code ability to self-healthing.
 Params:
     - `info` - Unused field in this handler.
     - `entry` - Current entry.
     - `ctx` - Context information.
 
-Returns 0 by default, which means - continue the entry traverse operation.
-*/
+Returns 0 by default, which means - continue the entry traverse operation. */
 static int _repair_handler(entry_info_t* __restrict info __attribute__((unused)), directory_entry_t* __restrict entry, void* __restrict ctx) {
     if ((entry->attributes & FILE_DIRECTORY) == FILE_DIRECTORY) entry_iterate(entry->dca, _repair_handler, ctx, &_fs_data);
     return 0;

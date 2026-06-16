@@ -439,7 +439,7 @@ cinfo_t info = {
 };
 
 if (root >= 0) {
-    NIFAT32_put_content(root, &info, 4); // Preallocate four clusters.
+    NIFAT32_put_content(root, &info, 4, NO_SEED); // Preallocate four clusters.
     NIFAT32_close_content(root);
 }
 ```

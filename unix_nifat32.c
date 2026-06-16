@@ -242,7 +242,7 @@ upper: {}
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
                 if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
-                    NIFAT32_put_content(root_ci, &file_info, reserve);
+                    NIFAT32_put_content(root_ci, &file_info, reserve, NO_SEED);
                     NIFAT32_close_content(root_ci);
                 }
                 
@@ -260,7 +260,7 @@ upper: {}
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
                 if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
-                    NIFAT32_put_content(root_ci, &dir_info, NO_RESERVE);
+                    NIFAT32_put_content(root_ci, &dir_info, NO_RESERVE, NO_SEED);
                     NIFAT32_close_content(root_ci);
                 }
                 

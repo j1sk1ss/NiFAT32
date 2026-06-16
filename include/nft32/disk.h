@@ -22,7 +22,7 @@ extern "C" {
 #include <std/logging.h>
 #include <std/threading.h>
 
-typedef int sector_offset_t;
+typedef int          sector_offset_t;
 typedef unsigned int sector_addr_t;
 
 #define WRITE_LOCK 0

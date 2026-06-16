@@ -41,6 +41,7 @@ extern "C" {
 #include <std/errcodes.h>
 #include <std/checksum.h>
 #include <std/threading.h>
+#include <nft32/addresses.h>
 #include <nft32/fat.h>
 #include <nft32/disk.h>
 #include <nft32/entry.h>
@@ -49,6 +50,8 @@ extern "C" {
 #include <nft32/errors.h>
 #include <nft32/cluster.h>
 #include <nft32/fatinfo.h>
+
+#define NIFAT32_VERSION "phoenix_160626"
 
 /* Bpb taken from http://wiki.osdev.org/FAT */
 typedef struct fat_extBS_32 {
@@ -99,9 +102,6 @@ typedef struct {
     mm_manager_t  mm_manager;
 } nifat32_params_t;
 
-#define BOOT_MULTIPLIER 2654435761U // Knuth's multiplier (2^32 / φ)
-#define GET_BOOTSECTOR(n, ts) (((((n) + 1) * BOOT_MULTIPLIER) >> 11) % (ts - 2))
-
 #ifdef NO_HEAP
     #define NIFAT32_NO_ECACHE
     #define NO_FAT_CACHE
@@ -125,7 +125,7 @@ should know end count of sectors.
 [Thread-safe]
 
 Params:
-- `params` - NIFAT32 setup params.
+    - `params` - NIFAT32 setup params.
 
 Return 1 if init success.
 Return 0 if init was interrupted by error.
@@ -197,13 +197,13 @@ Open content to content table.
 [Thread-safe]
 
 Params:
-- `rci` - Root content index. If we don't want to search in entire file system.
-          Note: By default use NO_RCI
-- `path` - Path to content (dir or file).
-           Note: Can be NULL. In this case will open ROOT directory.
-- `mode` - Content open mode.
-           Note: If mode is CR_MODE, function will create all directories in path.
-           For last entry in path will use DIR_ or FILE_ MODE. 
+    - `rci` - Root content index. If we don't want to search in entire file system.
+            Note: By default use NO_RCI
+    - `path` - Path to content (dir or file).
+            Note: Can be NULL. In this case will open ROOT directory.
+    - `mode` - Content open mode.
+            Note: If mode is CR_MODE, function will create all directories in path.
+            For last entry in path will use DIR_ or FILE_ MODE. 
 
 Returns a content index or negative error code.
 */
@@ -214,8 +214,8 @@ Get summary info about content.
 [Thread-safe]
 
 Params:
-- `ci` - Content index.
-- `info` - Pointer to info struct that will be filled by info.
+    - `ci` - Content index.
+    - `info` - Pointer to info struct that will be filled by info.
 
 Returns 1 if stat was success.
 Returns 0 if something went wrong.
@@ -229,9 +229,9 @@ Note 2: This function can't change filesize and base cluster.
 [Thread-safe]
 
 Params:
-- `ci` - Targer content index.
-- `info` - New meta data.
-         Note: required fields is file_name, file_extension and type.
+    - `ci` - Targer content index.
+    - `info` - New meta data.
+            Note: required fields is file_name, file_extension and type.
 
 Returns 1 if change was success.
 Returns 0 if something went wrong.
@@ -247,10 +247,10 @@ use directory_entry_t.
 [Thread-safe]
 
 Params:
-- `ci` - Target content index.
-- `offset` - Offset in content.
-- `buffer` - Pointer where function should store data.
-- `buff_size` - Buffer size.
+    - `ci` - Target content index.
+    - `offset` - Offset in content.
+    - `buffer` - Pointer where function should store data.
+    - `buff_size` - Buffer size.
 
 Returns the count of bytes that were read by the function.
 */
@@ -263,10 +263,10 @@ Note 2: If offset larger then content size, function will return data_size.
 [Thread-safe]
 
 Params:
-- `ci` - Target content index.
-- `offset` - Offset in content.
-- `data` - Pointer to source data.
-- `data_size` - Data size.
+    - `ci` - Target content index.
+    - `offset` - Offset in content.
+    - `data` - Pointer to source data.
+    - `data_size` - Data size.
 
 Returns a count of bytes that were written by the function.
 */
@@ -278,9 +278,9 @@ Note: Will save data in result clusters.
 [Thread-safe]
 
 Params:
-- `ci` - Target content index.
-- `offset` - Trancate offset in bytes.
-- `size` - Result size of file in bytes.
+    - `ci` - Target content index.
+    - `offset` - Trancate offset in bytes.
+    - `size` - Result size of file in bytes.
 
 Returns 1 if operation succeed.
 Returns 0 if simething went wrong.
@@ -291,7 +291,8 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size);
 Index content directory for improving search speed.
 [Thread-safe]
 
-- `ci` - Content index.
+Params:
+    - `ci` - Content index.
 
 Return 1 if index was success.
 Return 0 if something went wrong.
@@ -303,7 +304,7 @@ Close content from table and release all resources.
 [Thread-safe]
 
 Params:
-- `ci` - Content index.
+    - `ci` - Content index.
 
 Return 1 if close was success.
 Return 0 if something went wrong.
@@ -311,23 +312,26 @@ Return 0 if something went wrong.
 int NIFAT32_close_content(ci_t ci);
 
 #define NO_RESERVE  1
+#define NO_SEED     -1
 /*
 Add content to target content index. 
 [Thread-safe]
 
 Params:
-- `ci` - Root content index. Should be directory. 
-         Note: Can't be the `NO_RCI`. Use the open function with the NO_RCI 
-               to get this value instead.
-- `info` - Pointer to info about new content.
-- `reserve` - Reserved cluster count for content. 
-              Note: This option can be `NO_RESERVE`.
-              Note 2: Will reserve cluster chain for defragmentation prevent.
+    - `ci` - Root content index. Should be directory. 
+            Note: Can't be the `NO_RCI`. Use the open function with the NO_RCI 
+                to get this value instead.
+    - `info` - Pointer to info about new content.
+    - `reserve` - Reserved cluster count for content. 
+                Note: This option can be `NO_RESERVE`.
+                Note 2: Will reserve cluster chain for defragmentation prevent.
+    - `offst_seed` - 'NO_SEED' or any u32 value for preudo-random placement
+                     in the image.
 
 Returns 1 if operation was success.
 Returns 0 if something went wrong.
 */
-int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve);
+int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_seed);
 
 #define DEEP_COPY    0x01
 #define SHALLOW_COPY 0x02
@@ -342,9 +346,9 @@ Note 2: NIFAT32_copy_content will deallocate all previous data in dst.
 [Thread-safe]
 
 Params:
-- `src` - Source content index.
-- `dst` - Destination content index.
-- `deep` - Copy type.
+    - `src` - Source content index.
+    - `dst` - Destination content index.
+    - `deep` - Copy type.
 
 Returns 1 if copy succeed.
 Returns 0 if something went wrong.
@@ -357,7 +361,7 @@ Note: This function will close this content.
 [Thread-safe]
 
 Params:
-- `ci` - Content index.
+    - `ci` - Content index.
 
 Return 1 if delete success.
 Return 0 if something goes wrong.
@@ -371,8 +375,8 @@ Note 2: This function will ignore file entries.
 [Thread-safe]
 
 Params:
-- `ci` - Content index.
-- `rec` - Recursive.
+    - `ci` - Content index.
+    - `rec` - Recursive.
 
 Return 1 if repair success.
 Return 0 if something goes wrong.

@@ -6,7 +6,7 @@ int get_cluster_count(unsigned int size, fat_data_t* fi) {
 
 lock_t _allocater_lock = NULL_LOCK;
 static cluster_addr_t last_allocated_cluster = CLUSTER_OFFSET;
-cluster_addr_t alloc_cluster(fat_data_t* fi) {
+cluster_addr_t alloc_cluster(fat_data_t* fi, cluster_offset_t offt) {
 #ifndef NIFAT32_RO
     if (!THR_require_write(&_allocater_lock, get_thread_num())) {
         print_error("Can't write-lock alloc_cluster function!");
@@ -14,8 +14,11 @@ cluster_addr_t alloc_cluster(fat_data_t* fi) {
         return FAT_CLUSTER_BAD;
     }
 
-    cluster_addr_t cluster = fatmap_find_free(last_allocated_cluster, 1, fi);
-    if (!cluster) cluster = last_allocated_cluster;
+    cluster_addr_t* curr_offt = &last_allocated_cluster;
+    if (offt != NO_CLUSTER_OFFSET) curr_offt = &offt;
+
+    cluster_addr_t cluster = fatmap_find_free(*curr_offt, 1, fi);
+    if (!cluster) cluster = *curr_offt;
     else {
         if (is_cluster_free(read_fat(cluster, fi))) {
 #ifndef NO_THREADSAFE
@@ -24,12 +27,12 @@ cluster_addr_t alloc_cluster(fat_data_t* fi) {
                 return FAT_CLUSTER_BAD;
             }
 #endif
-            last_allocated_cluster = cluster + 1;
+            *curr_offt = cluster + 1;
             THR_release_write(&_allocater_lock, get_thread_num());
             return cluster;
         }
 
-        cluster = last_allocated_cluster;
+        cluster = *curr_offt;
     }
 
     int nfree_skip_step = 0;
@@ -43,18 +46,18 @@ cluster_addr_t alloc_cluster(fat_data_t* fi) {
                 return FAT_CLUSTER_BAD;
             }
 #endif
-            last_allocated_cluster = cluster + 1;
+            *curr_offt = cluster + 1;
             THR_release_write(&_allocater_lock, get_thread_num());
             return cluster;
         }
-        else if (is_cluster_bad(cluster_status) || is_cluster_reserved(cluster_status)) {
-            cluster += nfree_skip_step++;
-        }
-
+        else if (
+            is_cluster_bad(cluster_status) || 
+            is_cluster_reserved(cluster_status)
+        ) cluster += nfree_skip_step++;
         cluster++;
     }
 
-    last_allocated_cluster = fi->ext_root_cluster;
+    *curr_offt = fi->ext_root_cluster;
     THR_release_write(&_allocater_lock, get_thread_num());
     return FAT_CLUSTER_BAD;
 #endif

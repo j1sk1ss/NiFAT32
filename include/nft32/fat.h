@@ -29,6 +29,7 @@ extern "C" {
 #include <std/hamming.h>
 #include <std/logging.h>
 #include <std/threading.h>
+#include <nft32/addresses.h>
 #include <nft32/disk.h>
 #include <nft32/fatmap.h>
 #include <nft32/errors.h>
@@ -38,9 +39,6 @@ extern "C" {
 #define FAT_CLUSTER_BAD      0x0FFFFFF7
 #define FAT_CLUSTER_RESERVED 0x0FFFFFF8
 #define FAT_CLUSTER_END      0x0FFFFFFF
-
-#define FAT_MULTIPLIER 340573321U // Another prime, far from above
-#define GET_FATSECTOR(n, ts) (((((n) + 7) * FAT_MULTIPLIER) >> 13) % (ts - 32))
 
 typedef unsigned int cluster_offset_t;
 typedef unsigned int cluster_addr_t;

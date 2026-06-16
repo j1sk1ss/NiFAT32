@@ -28,14 +28,12 @@ extern "C" {
 #include <std/logging.h>
 #include <std/checksum.h>
 #include <std/threading.h>
+#include <nft32/addresses.h>
 #include <nft32/fat.h>
 #include <nft32/disk.h>
 #include <nft32/errors.h>
 #include <nft32/cluster.h>
 #include <nft32/fatinfo.h>
-
-#define JOURNAL_MULTIPLIER 12983229U
-#define GET_JOURNALSECTOR(n, ts) (((((n) + 35) * JOURNAL_MULTIPLIER) >> 3) % (ts - 2))
 
 typedef struct {
     unsigned char  file_name[11];

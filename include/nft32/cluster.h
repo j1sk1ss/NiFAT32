@@ -40,31 +40,34 @@ typedef const unsigned char* const_buffer_t;
 /*
 Calculate count of clusters for provided size of data.
 Params:
-- `size` - Data size.
-- `fi` - Pointer to FS data.
+    - `size` - Data size.
+    - `fi` - Pointer to FS data.
 
 Return count of cluster for provided data.
 */
 int get_cluster_count(unsigned int size, fat_data_t* fi);
 
+#define NO_CLUSTER_OFFSET 0xDEADBEEF
 /*
 Allocate cluster from free-clusters on disk and DON'T mark cluster as "END_CLUSTER32"
 [Thread-safe]
 
 Params:
-- `fi` - FS data.
+    - `fi` - FS data.
+    - `offt` - Make offset and get a new cluster with
+               offset.
 
 Return cluster address or BAD_CLUSTER if error.
 */
-cluster_addr_t alloc_cluster(fat_data_t* fi);
+cluster_addr_t alloc_cluster(fat_data_t* fi, cluster_offset_t offt);
 
 /*
 Mark cluster as <FREE>.
 [Thread-safe]
 
 Params:
-- `ca` - Cluster address.
-- `fi` - FS data.
+    - `ca` - Cluster address.
+    - `fi` - FS data.
 
 Return 1 if dealloc success.
 Return 0 if something goes wrong.
@@ -76,8 +79,8 @@ Deallocate entier cluster chain from start to <END>.
 [Thread-safe]
 
 Params:
-- `ca` - Start cluster in chain.
-- `fi` - FS data.
+    - `ca` - Start cluster in chain.
+    - `fi` - FS data.
 
 Return 1 if chain deallocated.
 Return 0 if chain is broken (<BAD> or no <END>).
@@ -89,11 +92,11 @@ Read data from cluster with offset.
 [Thread-safe]
 
 Params:
-- `offset` - Offset in cluster (Should be lower than spc * sector_size).
-- `ca` - Cluster address.
-- `buffer` - Pointer where function will store data.
-- `buff_size` - buffer size.
-- `fi` - FS data.
+    - `offset` - Offset in cluster (Should be lower than spc * sector_size).
+    - `ca` - Cluster address.
+    - `buffer` - Pointer where function will store data.
+    - `buff_size` - buffer size.
+    - `fi` - FS data.
 
 Return count of readden bytes.
 */
@@ -106,10 +109,10 @@ Read data from cluster.
 [Thread-safe]
 
 Params:
-- `ca` - Cluster address.
-- `buffer` - Pointer where function will store data.
-- `buff_size` - buffer size.
-- `fi` - FS data.
+    - `ca` - Cluster address.
+    - `buffer` - Pointer where function will store data.
+    - `buff_size` - buffer size.
+    - `fi` - FS data.
 
 Return count of readden bytes.
 */
@@ -120,11 +123,11 @@ Write data to cluster with offset.
 [Thread-safe]
 
 Params:
-- `ca` - Cluster address.
-- `offset` - Offset in cluster (Should be lower than spc * sector_size).
-- `buffer` - Pointer where function will take data for write.
-- `buff_size` - buffer size.
-- `fi` - FS data.
+    - `ca` - Cluster address.
+    - `offset` - Offset in cluster (Should be lower than spc * sector_size).
+    - `buffer` - Pointer where function will take data for write.
+    - `buff_size` - buffer size.
+    - `fi` - FS data.
 
 Return count of written bytes.
 */
@@ -137,10 +140,10 @@ Write data to cluster.
 [Thread-safe]
 
 Params:
-- `ca` - Cluster address.
-- `buffer` - Pointer where function will take data for write.
-- `buff_size` - buffer size.
-- `fi` - FS data.
+    - `ca` - Cluster address.
+    - `buffer` - Pointer where function will take data for write.
+    - `buff_size` - buffer size.
+    - `fi` - FS data.
 
 Return count of written bytes.
 */
@@ -152,11 +155,11 @@ Note: copy buffer should be greater or equals to sector size.
 [Thread-safe]
 
 Params:
-- `src` - Source cluster.
-- `dst` - Destination cluster.
-- `buffer` - Copy buffer.
-- `buff_size` - Copy buffer size.
-- `fi` - FS data.
+    - `src` - Source cluster.
+    - `dst` - Destination cluster.
+    - `buffer` - Copy buffer.
+    - `buff_size` - Copy buffer size.
+    - `fi` - FS data.
 
 Return count of readden and written bytes.
 */

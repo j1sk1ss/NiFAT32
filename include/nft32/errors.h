@@ -23,6 +23,7 @@ extern "C" {
 #include <std/hamming.h>
 #include <std/errcodes.h>
 #include <std/threading.h>
+#include <nft32/addresses.h>
 #include <nft32/disk.h>
 #include <nft32/fatinfo.h>
 
