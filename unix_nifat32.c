@@ -88,6 +88,7 @@ int main(__attribute__((unused)) int argc, char* argv[]) {
         .jc        = jc,
         .ec        = 0,
         .bs_count  = bs,
+        .ef        = 5,
         .disk_io   = {
             .read_sector  = _mock_sector_read_,
             .write_sector = _mock_sector_write_,
@@ -242,7 +243,7 @@ upper: {}
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
                 if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
-                    NIFAT32_put_content(root_ci, &file_info, reserve, NO_SEED);
+                    NIFAT32_put_content(root_ci, &file_info, reserve);
                     NIFAT32_close_content(root_ci);
                 }
                 
@@ -260,7 +261,7 @@ upper: {}
                 else root_ci = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
                 if (!OPEN_SUCCESS(root_ci)) fprintf(stderr, "Can't open file!\n");
                 else {
-                    NIFAT32_put_content(root_ci, &dir_info, NO_RESERVE, NO_SEED);
+                    NIFAT32_put_content(root_ci, &dir_info, NO_RESERVE);
                     NIFAT32_close_content(root_ci);
                 }
                 

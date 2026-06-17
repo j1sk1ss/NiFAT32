@@ -183,9 +183,9 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
         directory_entry_t* entry = (directory_entry_t*)&decoded_cluster;
         for (unsigned int i = 0; i < entries_per_cluster; i++, entry++) {
             if (
-                !_validate_entry(entry) || 
-                entry->file_name[0] == ENTRY_FREE || 
-                entry->file_name[0] == ENTRY_END
+                !_validate_entry(entry)         || 
+                *entry->file_name == ENTRY_FREE || 
+                *entry->file_name == ENTRY_END
             ) {
                 int ji = journal_add_operation(ADD_OP, ca, i, (unsqueezed_entry_t*)meta, fi);
 
@@ -219,7 +219,7 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
         }
 
         if (is_cluster_end(nca)) {
-            if (is_cluster_bad((nca = alloc_cluster(fi, NO_CLUSTER_OFFSET)))) {
+            if (is_cluster_bad((nca = alloc_cluster(fi, get_cluster_offset(fi))))) {
                 print_error("Allocation of new cluster failed. Aborting...");
                 errors_register_error(CLUSTER_ALLOCATION_ERROR, fi);
                 break;

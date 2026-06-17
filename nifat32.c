@@ -4,6 +4,8 @@
    Contains data about the root cluster, offsets and general properties. */
 static fat_data_t _fs_data = { 0 };
 static lock_t _fs_api_lock = NULL_LOCK;
+#define GENERATE_CLUSTER_OFF(n) \
+    GET_CLUSTER_OFF(n, _fs_data.total_clusters - _fs_data.ext_root_cluster)
 
 #define FS_API_LOCK_OR_RETURN(ret) \
     if (!THR_require_write(&_fs_api_lock, get_thread_num())) return (ret);
@@ -222,7 +224,7 @@ static cluster_addr_t _get_cluster_by_path(
             ecache_t* entry_index = get_content_ecache(curr_ci);
             if (!entry_search(fatname_buffer, active_cluster, entry_index, &current_entry, &_fs_data)) {
                 if (IS_CREATE_MODE(mode)) {
-                    cluster_addr_t nca = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
+                    cluster_addr_t nca = alloc_cluster(&_fs_data, get_cluster_offset(&_fs_data));
                     if (set_cluster_end(nca, &_fs_data)) {
                         create_entry(
                             fatname_buffer, path[iterator] || GET_MODE_TARGET(mode) != FILE_TARGET, 
@@ -354,7 +356,7 @@ Params:
 Returns BAD_CLUSTER if something goes wrong or a new allocated cluster. */
 static cluster_addr_t _add_cluster_to_chain(cluster_addr_t hca) {
     print_debug("_add_cluster_to_chain(hca=%i)", hca);
-    cluster_addr_t allocated_cluster = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
+    cluster_addr_t allocated_cluster = alloc_cluster(&_fs_data, get_cluster_offset(&_fs_data));
     if (!is_cluster_bad(allocated_cluster)) {
         if (!set_cluster_end(allocated_cluster, &_fs_data)) {
             print_error("Can't set cluster to <END> state!");
@@ -383,18 +385,18 @@ static cluster_addr_t _add_cluster_to_chain(cluster_addr_t hca) {
 
 /* Add an allocated cluster to the provided content index.
 Params:
-- `ci` - Content that needs new cluster.
-- `lca` - Last cluster of content. Can be FAT_CLUSTER_BAD if we don't now yet last cluster.
+    - `ci` - Content that needs new cluster.
+    - `lca` - Last cluster of content. Can be 'FAT_CLUSTER_BAD' if we don't now yet last cluster.
 
-Return cluster_addr_t to new cluster. Also new cluster marked as FAT_CLUSTER_END.
-Return FAT_CLUSTER_BAD if comething goes wrong. */
+Return cluster_addr_t to new cluster. Also new cluster marked as 'FAT_CLUSTER_END'.
+Return 'FAT_CLUSTER_BAD' if something goes wrong. */
 static cluster_addr_t _add_cluster_to_content(const ci_t ci, cluster_addr_t lca) {
     print_debug("_add_cluster_to_content(ci=%i, lca=%i)", ci, lca);
     if (lca == FAT_CLUSTER_BAD) {
         int max_iterations = _fs_data.total_clusters;
         cluster_addr_t cluster = get_content_data_ca(ci);
         while (!is_cluster_end(cluster) && !is_cluster_bad(cluster) && max_iterations-- > 0) {
-            lca = cluster;
+            lca     = cluster;
             cluster = read_fat(cluster, &_fs_data);
         }
 
@@ -448,7 +450,7 @@ int NIFAT32_write_buffer2content(const ci_t ci, cluster_offset_t offset, const_b
     while (data_size > 0 && !is_cluster_bad(ca = _add_cluster_to_content(ci, ca))) {
         if (offset > _fs_data.cluster_size) {
             total_size += _fs_data.cluster_size;
-            offset -= _fs_data.cluster_size;
+            offset     -= _fs_data.cluster_size;
         }
         else {
             int writable = (data_size > (int)(_fs_data.cluster_size - offset)) ? (int)(_fs_data.cluster_size - offset) : data_size;
@@ -530,11 +532,12 @@ int NIFAT32_truncate_content(const ci_t ci, cluster_offset_t offset, int size) {
     print_warn("NIFAT32_truncate_content() not implemented. Don't provide the 'NIFAT32_RO'!");
     return 1;
 }
-// TODO: Shallow copy creation has a huge overhead/ We need a new function which handles this.
-int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_seed) {
+
+// TODO: Shallow copy creation has a huge overhead. We need a new function which handles this.
+int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve) {
 #ifndef NIFAT32_RO
     FS_API_LOCK_OR_RETURN(0);
-    print_log("NIFAT32_put_content(ci=%i, info=%s, reserve=%i, offst_seed=%u)", ci, info->full_name, reserve, offst_seed);
+    print_log("NIFAT32_put_content(ci=%i, info=%s, reserve=%i)", ci, info->full_name, reserve);
     cluster_addr_t target = get_content_data_ca(ci);
     ecache_t* entry_cache = get_content_ecache(ci);
     if (entry_search((char*)info->full_name, target, entry_cache, NULL, &_fs_data)) {
@@ -544,9 +547,7 @@ int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_see
     }
 
     directory_entry_t entry;
-    cluster_addr_t entry_ca = alloc_cluster(&_fs_data, offst_seed == -1 ? // TODO: Allocate cluster offset for every instance
-                              NO_CLUSTER_OFFSET : 
-                              GET_CLUSTER_OFF(offst_seed, _fs_data.total_clusters - _fs_data.ext_root_cluster));
+    cluster_addr_t entry_ca = alloc_cluster(&_fs_data, get_cluster_offset(&_fs_data));
     if (!set_cluster_end(entry_ca, &_fs_data)) {
         print_error("set_cluster_end() error!");
         errors_register_error(SET_CLUSTER_END_ERROR, &_fs_data);
@@ -579,7 +580,7 @@ int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_see
 #ifndef NIFAT32_RO
 static int _deepcopy_handler(entry_info_t* __restrict info __attribute__((unused)), directory_entry_t* __restrict entry, void* ctx) {
     cluster_addr_t old_ca = entry->dca;
-    cluster_addr_t nca = alloc_cluster(&_fs_data, NO_CLUSTER_OFFSET);
+    cluster_addr_t nca = alloc_cluster(&_fs_data, get_cluster_offset(&_fs_data));
     cluster_addr_t hca = nca;
     if (set_cluster_end(nca, &_fs_data)) {
         do {

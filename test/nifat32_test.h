@@ -124,7 +124,8 @@ static int setup_nifat32(nifat32_params_t* out) {
             .fd_fprintf  = _mock_fprintf_,
             .fd_vfprintf = _mock_vfprintf_
         },
-        .mm_manager = { DEFAULT_MM_MANAGER }
+        .mm_manager = { DEFAULT_MM_MANAGER },
+        .ef         = -1
     };
     if (out) memcpy(out, &params, sizeof(nifat32_params_t));
 

@@ -47,6 +47,17 @@ Return count of cluster for provided data.
 */
 int get_cluster_count(unsigned int size, fat_data_t* fi);
 
+/*
+Get pseudo-random cluster offset.
+[Thread-safe]
+
+Params:
+    - `fi` - FS data.
+
+Returns a pseudo-random offset. Might return an allocated offset. 
+*/
+cluster_addr_t get_cluster_offset(fat_data_t* fi);
+
 #define NO_CLUSTER_OFFSET 0xDEADBEEF
 /*
 Allocate cluster from free-clusters on disk and DON'T mark cluster as "END_CLUSTER32"
@@ -57,7 +68,7 @@ Params:
     - `offt` - Make offset and get a new cluster with
                offset.
 
-Return cluster address or BAD_CLUSTER if error.
+Return cluster address or 'BAD_CLUSTER' if error.
 */
 cluster_addr_t alloc_cluster(fat_data_t* fi, cluster_offset_t offt);
 

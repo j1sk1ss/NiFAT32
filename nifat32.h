@@ -97,6 +97,7 @@ typedef struct {
     unsigned int  ts;       // total sectors
     unsigned char jc;       // journals count
     unsigned char ec;       // error clusters count
+    char          ef;       // entry offset or -1
     disk_io_t     disk_io;
     log_io_t      logg_io;
     mm_manager_t  mm_manager;
@@ -312,7 +313,6 @@ Return 0 if something went wrong.
 int NIFAT32_close_content(ci_t ci);
 
 #define NO_RESERVE  1
-#define NO_SEED     -1
 /*
 Add content to target content index. 
 [Thread-safe]
@@ -325,13 +325,11 @@ Params:
     - `reserve` - Reserved cluster count for content. 
                 Note: This option can be `NO_RESERVE`.
                 Note 2: Will reserve cluster chain for defragmentation prevent.
-    - `offst_seed` - 'NO_SEED' or any u32 value for preudo-random placement
-                     in the image.
 
 Returns 1 if operation was success.
 Returns 0 if something went wrong.
 */
-int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve, int offst_seed);
+int NIFAT32_put_content(const ci_t ci, cinfo_t* info, int reserve);
 
 #define DEEP_COPY    0x01
 #define SHALLOW_COPY 0x02

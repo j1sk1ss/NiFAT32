@@ -6,6 +6,16 @@ int get_cluster_count(unsigned int size, fat_data_t* fi) {
 
 lock_t _allocater_lock = NULL_LOCK;
 static cluster_addr_t last_allocated_cluster = CLUSTER_OFFSET;
+cluster_addr_t get_cluster_offset(fat_data_t* fi) {
+#ifndef NIFAT32_RO
+    return fi->entry_offset == -1 ? 
+                    NO_CLUSTER_OFFSET : 
+                    GET_CLUSTER_OFF(last_allocated_cluster += fi->entry_offset, fi->total_clusters - fi->ext_root_cluster);
+#endif
+    UNUSED(fi);
+    return FAT_CLUSTER_BAD;
+}
+
 cluster_addr_t alloc_cluster(fat_data_t* fi, cluster_offset_t offt) {
 #ifndef NIFAT32_RO
     if (!THR_require_write(&_allocater_lock, get_thread_num())) {

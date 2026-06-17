@@ -226,22 +226,22 @@ Both callbacks return nonzero on success and zero on failure.
 #define IMAGE_SIZE_BYTES (64u * 1024u * 1024u)
 
 nifat32_params_t params = {
-    .fat_cache = CACHE,
-    .bs_num = 0,
-    .bs_count = 5,
-    .ts = IMAGE_SIZE_BYTES / SECTOR_SIZE,
-    .jc = 2,
-    .ec = 1,
-    .disk_io = {
-        .read_sector = read_sector,
+    .fat_cache        = CACHE,
+    .bs_num           = 0,
+    .bs_count         = 5,
+    .ts               = IMAGE_SIZE_BYTES / SECTOR_SIZE,
+    .jc               = 2,
+    .ec               = 1,
+    .disk_io          = {
+        .read_sector  = read_sector,
         .write_sector = write_sector,
-        .sector_size = SECTOR_SIZE
+        .sector_size  = SECTOR_SIZE
     },
-    .logg_io = {
-        .fd_fprintf = NULL,
-        .fd_vfprintf = NULL
+    .logg_io          = {
+        .fd_fprintf   = NULL,
+        .fd_vfprintf  = NULL
     },
-    .mm_manager = { DEFAULT_MM_MANAGER }
+    .mm_manager       = { DEFAULT_MM_MANAGER }
 };
 
 if (!NIFAT32_init(&params)) {
@@ -251,17 +251,18 @@ if (!NIFAT32_init(&params)) {
 
 ### Mount Parameters
 
-| Field | Meaning |
-| --- | --- |
-| `fat_cache` | Bit mask made from `NO_CACHE`, `CACHE`, `HARD_CACHE`, and `MAP_CACHE` |
-| `bs_num` | First boot sector copy to try; normally `0` |
-| `bs_count` | Number of boot sector copies created by `--bsbc` |
-| `ts` | Total logical sectors in the image |
-| `jc` | Journal copy count created by `--jc` |
-| `ec` | Persistent error-storage copy count; use `0` to disable at runtime |
-| `disk_io` | Sector read/write callbacks and logical sector size |
-| `logg_io` | Optional `fprintf`-like and `vfprintf`-like callbacks |
-| `mm_manager` | Allocator callbacks or `DEFAULT_MM_MANAGER` |
+| Field        | Meaning                                                                           |
+| ---          | ---                                                                               |
+| `fat_cache`  | Bit mask made from `NO_CACHE`, `CACHE`, `HARD_CACHE`, and `MAP_CACHE`             |
+| `bs_num`     | First boot sector copy to try; normally `0`                                       |
+| `bs_count`   | Number of boot sector copies created by `--bsbc`                                  |
+| `ts`         | Total logical sectors in the image                                                |
+| `jc`         | Journal copy count created by `--jc`                                              |
+| `ec`         | Persistent error-storage copy count; use `0` to disable at runtime                |
+| `ef`         | Entries offset which means it will enable presudo-random placement over the image |
+| `disk_io`    | Sector read/write callbacks and logical sector size                               |
+| `logg_io`    | Optional `fprintf`-like and `vfprintf`-like callbacks                             |
+| `mm_manager` | Allocator callbacks or `DEFAULT_MM_MANAGER`                                       |
 
 `NIFAT32_init()` increments `bs_num` while trying damaged boot sector copies, so the structure may be modified after a failed or recovered mount.
 
@@ -295,9 +296,9 @@ Configure and build:
 nifat32_params_t params = {
     /* ... */
     .mm_manager = {
-        .init = mm_init,
+        .init   = mm_init,
         .malloc = mm_alloc,
-        .free = mm_free
+        .free   = mm_free
     }
 };
 ```
@@ -439,7 +440,7 @@ cinfo_t info = {
 };
 
 if (root >= 0) {
-    NIFAT32_put_content(root, &info, 4, NO_SEED); // Preallocate four clusters.
+    NIFAT32_put_content(root, &info, 4); // Preallocate four clusters.
     NIFAT32_close_content(root);
 }
 ```
