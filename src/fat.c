@@ -175,10 +175,12 @@ cluster_val_t read_fat(cluster_addr_t ca, fat_data_t* fi) {
     if (table_value == FAT_CLUSTER_FREE) fatmap_set(ca);
     else fatmap_unset(ca);
 
+#ifndef NIFAT32_RO
     if (wrong > 0) {
         print_warn("FAT wrong value at ca=%u. Fixing to val=%u...", ca, table_value);
         _write_fat_locked(ca, table_value, fi);
     }
+#endif
 
     print_debug("read_fat(ca=%u) -> %u", ca, table_value);
     THR_release_write(&_fat_lock, get_thread_num());

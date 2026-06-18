@@ -9,24 +9,45 @@ The following measurements were produced on Fedora Linux x86-64 with GCC 15.2.1 
 
 ### Flags
 
-P.S.: *All rows use `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections`*.
+P.S.: *Embedded footprint is measured with `size`: ROM is `text + data`, static RAM is `data + bss`. All rows use `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections`.*
 
-| Flags | ROM | ROM change | Static RAM | RAM change | Stripped ELF |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `-O2` | 41.2 KiB | - | 505.2 KiB | - | 47.1 KiB |
-| + `NIFAT32_RO=1` | 32.5 KiB | -8.7 KiB | 505.1 KiB | -0.1 KiB | 39.0 KiB |
-| + `NO_HEAP=1` | 32.5 KiB | 0.0 KiB | 505.1 KiB | 0.0 KiB | 39.0 KiB |
-| + `NO_DEFAULT_MM_MANAGER=1` | 32.0 KiB | -0.5 KiB | 5.1 KiB | -500.0 KiB | 39.0 KiB |
-| + `NIFAT32_NO_ERROR=1` | 30.8 KiB | -1.2 KiB | 5.0 KiB | -0.1 KiB | 39.0 KiB |
-| + `NO_ENTRY_VALIDATION=1` | 30.7 KiB | -0.1 KiB | 5.0 KiB | 0.0 KiB | 39.0 KiB |
-| + `CONTENT_TABLE_SIZE=8 IO_THREADS_MAX=4` | 30.4 KiB | -0.3 KiB | 1.8 KiB | -3.2 KiB | 38.7 KiB |
-| + `CONTENT_TABLE_SIZE=1 IO_THREADS_MAX=1` | 29.9 KiB | -0.5 KiB | 1.3 KiB | -0.5 KiB | 38.7 KiB |
-| + `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1` | 24.0 KiB | -5.8 KiB | 1.3 KiB | less than -0.1 KiB | 30.6 KiB |
-| `-Os` | 20.7 KiB | -3.4 KiB | 1.2 KiB | less than -0.1 KiB | 26.6 KiB |
-| `-Oz` | 20.4 KiB | -0.3 KiB | 1.2 KiB | 0.0 KiB | 26.6 KiB |
-| + `-flto` | **20.3 KiB** | less than -0.1 KiB | **1.3 KiB** | less than +0.1 KiB | 26.6 KiB |
+| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | ROM | Static RAM |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: |
+| + | | | | | | | | | | | | | | | | 45,544 B | 517,356 B |
+| + | + | | | | | | | | | | | | | | | 35,104 B | 517,236 B |
+| + | + | + | | | | | | | | | | | | | | 35,104 B | 517,236 B |
+| + | + | + | + | | | | | | | | | | | | | 34,425 B | 5,192 B |
+| + | + | + | + | + | | | | | | | | | | | | 32,869 B | 5,172 B |
+| + | + | + | + | + | + | | | | | | | | | | | 32,845 B | 5,172 B |
+| + | + | + | + | + | + | + | | | | | | | | | | 32,549 B | 1,908 B |
+| + | + | + | + | + | + | | + | | | | | | | | | 31,957 B | 1,348 B |
+| + | + | + | + | + | + | | + | + | | | | | | | | 25,449 B | 1,296 B |
+| | + | + | + | + | + | | + | + | + | | | | | | | 21,801 B | 1,280 B |
+| | + | + | + | + | + | | + | + | | + | | | | | | 21,490 B | 1,280 B |
+| | + | + | + | + | + | | + | + | | + | + | | | | | 21,525 B | 1,312 B |
+| | + | + | + | + | + | | + | + | | + | + | + | | | | 21,257 B | 1,312 B |
+| | + | + | + | + | + | | + | + | | + | + | + | + | | | 17,001 B | 1,312 B |
+| | + | + | + | + | + | | + | + | | + | + | + | + | + | | 6,782 B | 856 B |
+| | + | + | + | + | + | | + | + | | + | + | + | + | + | + | **6,767 B** | **856 B** |
 
-The exact minimum measured values are 20,809 bytes of `text + data` and 1,308 bytes of `data + bss`. LTO reduced ROM by another 36 bytes, although the rounded KiB value remains almost unchanged.
+- 1 - `-O2`  
+- 2 - `NIFAT32_RO=1`  
+- 3 - `NO_HEAP=1`  
+- 4 - `NO_DEFAULT_MM_MANAGER=1`  
+- 5 - `NIFAT32_NO_ERROR=1`  
+- 6 - `NO_ENTRY_VALIDATION=1`  
+- 7 - `CONTENT_TABLE_SIZE=8 IO_THREADS_MAX=4`  
+- 8 - `CONTENT_TABLE_SIZE=1 IO_THREADS_MAX=1`  
+- 9 - `NIFAT32_NO_ECACHE=1 NO_FAT_CACHE=1 NO_FAT_MAP=1`  
+- 10 - `-Os`  
+- 11 - `-Oz`  
+- 12 - `-flto`  
+- 13 - `NO_THREADSAFE=1`  
+- 14 - `-fno-asynchronous-unwind-tables -fno-unwind-tables`  
+- 15 - `-Wl,--version-script=nifat32.exports`  
+- 16 - `-fno-plt -Wl,--build-id=none -Wl,-z,noseparate-code`
+
+The minimum measured embedded footprint is **6,767 bytes of ROM** and **856 bytes of static RAM**. This keeps the public `NIFAT32_*` API exported and hides internal symbols from the shared object so that LTO and section garbage collection can discard unused internals.
 
 ### Maximum Profile
 
@@ -41,8 +62,8 @@ Minimum measured build:
 ```bash
 make shared \
   BUILD_DIR=builds/minimum \
-  CFLAGS="-Oz -flto -ffunction-sections -fdata-sections" \
-  LDFLAGS="-flto -Wl,--gc-sections" \
+  CFLAGS="-Oz -flto -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-plt" \
+  LDFLAGS="-flto -Wl,--gc-sections -Wl,--version-script=nifat32.exports -Wl,--build-id=none -Wl,-z,noseparate-code" \
   NIFAT32_RO=1 \
   NO_HEAP=1 \
   NO_DEFAULT_MM_MANAGER=1 \
@@ -51,6 +72,7 @@ make shared \
   NO_FAT_MAP=1 \
   NIFAT32_NO_ERROR=1 \
   NO_ENTRY_VALIDATION=1 \
+  NO_THREADSAFE=1 \
   CONTENT_TABLE_SIZE=1 \
   IO_THREADS_MAX=1
 ```

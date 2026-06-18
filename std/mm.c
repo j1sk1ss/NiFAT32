@@ -48,10 +48,8 @@ static int __coalesce_memory() {
 }
 
 lock_t _malloc_lock = NULL_LOCK;
-#endif
 
 static void* __malloc_s(unsigned long size, unsigned int offset, int prepare_mem) {
-#ifndef NON_DEFAULT_MM_MANAGER
     if (!size) return NULL;
 
     size   = (size + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
@@ -94,11 +92,8 @@ static void* __malloc_s(unsigned long size, unsigned int offset, int prepare_mem
 
     THR_release_write(&_malloc_lock, get_thread_num());
     return prepare_mem ? NULL : __malloc_s(size, offset, 1);
-#endif
-    UNUSED(size, offset, prepare_mem);
-    print_warn("__malloc_s() not implemented. Don't provide the 'NIFAT32_RO'!");
-    return NULL;
 }
+#endif
 
 static void* _malloc_s(unsigned long size) {
 #ifndef NON_DEFAULT_MM_MANAGER

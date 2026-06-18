@@ -1,0 +1,6 @@
+NIFAT32_1.0 {
+  global:
+    NIFAT32_*;
+  local:
+    *;
+};
