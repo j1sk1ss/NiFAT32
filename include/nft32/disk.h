@@ -49,11 +49,10 @@ typedef struct {
 
 /*
 Setup disk ubstraction layer.
-
 Params: 
-- read - IO read function on specific platform.
-- write - IO write function on specific platform.
-- sector_size - Platform sector size.
+    - `read` - IO read function on specific platform.
+    - `write` - IO write function on specific platform.
+    - `sector_size` - Platform sector size.
 
 Return 1 if setup success.
 Return 0 if something goes wrong.
@@ -70,12 +69,12 @@ Note: Will claim area for read lock.
 [Thread-safe]
 
 Params:
-- sa - Sector address, e.g. sector index.
-- buffer - Pointer to buffer where function will safe data from disk.
-- buff_size - Buffer size.
-              Note: Should be greater or equals to sector size.
-              Note 2: If buffer size lower then sector size, data will 
-              shrink to this size without error.
+    - `sa` - Sector address, e.g. sector index.
+    - `buffer` - Pointer to buffer where function will safe data from disk.
+    - `buff_size` - Buffer size.
+                    Note: Should be greater or equals to sector size.
+                    Note 2: If buffer size lower then sector size, data will 
+                    shrink to this size without error.
 
 Return 1 if io read success.
 Return 0 if io error.
@@ -88,13 +87,13 @@ Note: Will claim area for read lock.
 [Thread-safe]
 
 Params:
-- sa - Start sector address, e.g. sector index.
-- buffer - Pointer to buffer where function will safe data from disk.
-- buff_size - Buffer size.
-              Note: Should be greater or equals to sector size.
-              Note 2: If buffer size lower then sector size, data will 
-              shrink to this size without error.
-- sc - Sectors count.
+    - `sa` - Start sector address, e.g. sector index.
+    - `buffer` - Pointer to buffer where function will safe data from disk.
+    - `buff_size` - Buffer size.
+                    Note: Should be greater or equals to sector size.
+                    Note 2: If buffer size lower then sector size, data will 
+                    shrink to this size without error.
+    - `sc` - Sectors count.
 
 Return 1 if io read success.
 Return 0 if io error.
@@ -107,10 +106,10 @@ Note: Will claim area for write lock.
 [Thread-safe]
 
 Params:
-- sa - Sector address, e.g. sector index.
-- data - Pointer to buffer where placed data for write operation.
-- data_size - Data size for write.
-              Note: If data larger then sector size, function won't shrink it.
+    - `sa` - Sector address, e.g. sector index.
+    - `data` - Pointer to buffer where placed data for write operation.
+    - `data_size` - Data size for write.
+                    Note: If data larger then sector size, function won't shrink it.
 
 Return 1 if io write success.
 Return 0 if io error.        
@@ -123,11 +122,11 @@ Note: Will claim area for write lock.
 [Thread-safe]
 
 Params:
-- sa - Sector address, e.g. sector index.
-- data - Pointer to buffer where placed data for write operation.
-- data_size - Data size for write.
-              Note: If data larger then sector size, function won't shrink it.
-- sc - Sectors count.
+    - `sa` - Sector address, e.g. sector index.
+    - `data` - Pointer to buffer where placed data for write operation.
+    - `data_size` - Data size for write.
+                    Note: If data larger then sector size, function won't shrink it.
+    - `sc` - Sectors count.
 
 Return 1 if io write success.
 Return 0 if io error.     
@@ -140,11 +139,11 @@ Note: copy buffer should be greater or equals to sector size.
 [Thread-safe]
 
 Params:
-- src - Source start sector.
-- dst - Destination start sector.
-- sc - Sector count.
-- buffer - Copy buffer.
-- buff_size - Copy buffer size.
+    - `src` - Source start sector.
+    - `dst` - Destination start sector.
+    - `sc` - Sector count.
+    - `buffer` - Copy buffer.
+    - `buff_size` - Copy buffer size.
 
 Return count of readden and written bytes.
 */

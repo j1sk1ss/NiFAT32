@@ -128,6 +128,7 @@ Boolean Make variables accept `0` or `1` and default to `0`.
 | `NO_FAT_MAP` | `NO_FAT_MAP` | Disables the free-cluster bitmap |
 | `NO_ENTRY_VALIDATION` | `NO_ENTRY_VALIDATION` | Skips directory-entry checksum validation |
 | - | `NO_THREADSAFE` | Make the FS not thread safe (exclude related code from the final binary) |
+| - | `NO_HAMMING` | Exclude all hamming-code related logic |
 
 Numeric configuration variables:
 
@@ -350,7 +351,7 @@ Available helpers from `std/fatname.h`:
 | `nft32_fatname_to_name` | Convert `HELLO   TXT` to a regular name |
 | `nft32_path_to_fatnames` | Convert a path to the NiFAT32 path form |
 | `nft32_extract_name` | Extract the final path component |
-| `unpack_83_name` | Split an 11-byte FAT name into name and extension |
+| `nft32_unpack_83_name` | Split an 11-byte FAT name into name and extension |
 
 Open modes:
 

@@ -21,6 +21,7 @@ int fatmap_init(fat_data_t* fi) {
     THR_release_write(&_fatmap_lock, get_thread_num());
     return 1;
 #endif
+    UNUSED(fi);
     print_warn("fatmap_init() is not implemented! Don't provide the 'NO_FAT_MAP'!");
     return 1;
 }
@@ -32,6 +33,7 @@ int fatmap_set(unsigned int ca) {
     THR_release_write(&_fatmap_lock, get_thread_num());
     return 1;
 #endif
+    UNUSED(ca);
     print_warn("fatmap_set() is not implemented! Don't provide the 'NO_FAT_MAP'!");
     return 1;
 }
@@ -43,6 +45,7 @@ int fatmap_unset(unsigned int ca) {
     THR_release_write(&_fatmap_lock, get_thread_num());
     return 1;
 #endif
+    UNUSED(ca);
     print_warn("fatmap_unset() is not implemented! Don't provide the 'NO_FAT_MAP'!");
     return 1;
 }
@@ -76,6 +79,7 @@ unsigned int fatmap_find_free(unsigned int offset, int size, fat_data_t* fi) {
     THR_release_read(&_fatmap_lock);
     return 0;
 #endif
+    UNUSED(offset, size, fi);
     print_warn("fatmap_find_free() is not implemented! Don't provide the 'NO_FAT_MAP'!");
     return 0;
 }

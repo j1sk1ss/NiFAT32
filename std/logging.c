@@ -7,7 +7,7 @@
     };
 #endif
 
-int LOG_setup(
+void LOG_setup(
     int (*fd_fprintf)(const char*, ...),
     int (*fd_vfprintf)(const char*, va_list)
 ) {
@@ -16,7 +16,6 @@ int LOG_setup(
     _log_io.fd_vfprintf = fd_vfprintf;
 #endif
     UNUSED(fd_fprintf, fd_vfprintf);
-    return 1;
 }
 
 #ifndef NO_LOGGING
@@ -32,7 +31,7 @@ static int _write_log(const char* level, const char* file, int line, const char*
 }
 #endif
 
-int nft32_log_message(const char* level, const char* file, int line, const char* message, ...) {
+void LOG_emmit_message(const char* level, const char* file, int line, const char* message, ...) {
 #ifndef NO_LOGGING
     va_list args;
     va_start(args, message);
@@ -40,5 +39,4 @@ int nft32_log_message(const char* level, const char* file, int line, const char*
     va_end(args);
 #endif
     UNUSED(level, file, line, message);
-    return 1;
 }

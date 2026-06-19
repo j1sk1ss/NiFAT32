@@ -67,7 +67,7 @@ Params:
 - `name` - Buffer for name.
 - `ext` - Buffer for extention.
 */
-void unpack_83_name(const char* name83, char* name, char* ext);
+void nft32_unpack_83_name(const char* name83, char* name, char* ext);
 
 #ifdef __cplusplus
 }

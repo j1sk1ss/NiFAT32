@@ -1,7 +1,5 @@
-/*
-unix_nifat32.c
-This is a template file with simple implementation of file manage on nifat32.
-*/
+/* unix_nifat32.c
+This is a template file with simple implementation of file manage on nifat32. */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -60,13 +58,11 @@ static int _mock_vfprintf_(const char* fmt, va_list args) {
     return vfprintf(stdout, fmt, args);
 }
 
-/*
-argv[1] - Path to nifat32 image
+/* argv[1] - Path to nifat32 image
 argv[2] - Image size
 argv[3] - Sector size
 argv[4] - bs_count
-argv[5] - jc
-*/
+argv[5] - jc */
 int main(__attribute__((unused)) int argc, char* argv[]) {
     disk_fd = open(argv[1], O_RDWR);
     if (disk_fd < 0) {
@@ -78,11 +74,11 @@ int main(__attribute__((unused)) int argc, char* argv[]) {
     sector_size = atoi(argv[3]);
     int bs = atoi(argv[4]);
     int jc = atoi(argv[5]);
-    #define DEFAULT_VOLUME_SIZE (1024 * 1024)
     fprintf(stdout, "v_size=%i, sector_size=%i, bs=%i, jc=%i\n", v_size, sector_size, bs, jc);
-
+    
     nifat32_params_t params = { 
         .bs_num    = 0, 
+#define DEFAULT_VOLUME_SIZE (1024 * 1024)
         .ts        = (v_size * DEFAULT_VOLUME_SIZE) / sector_size, 
         .fat_cache = CACHE, 
         .jc        = jc,
@@ -98,6 +94,8 @@ int main(__attribute__((unused)) int argc, char* argv[]) {
             .fd_fprintf  = _mock_fprintf_,
             .fd_vfprintf = _mock_vfprintf_
         },
+#define NO_DEFAULT_MM_MANAGER
+#define NON_DEFAULT_MM_MANAGER
         .mm_manager = { 
             .init   = NULL,
             .malloc = malloc,
@@ -118,15 +116,22 @@ int main(__attribute__((unused)) int argc, char* argv[]) {
         printf("%s > ", current_path);
 
         char buffer[256] = { 0 };
-        fgets(buffer, sizeof(buffer), stdin);
+        if (!fgets(buffer, sizeof(buffer), stdin)) {
+            break;
+        }
+
         buffer[strcspn(buffer, "\n")] = 0;
 
         int cmd_size = 0;
         char* cmds[20] = { NULL };
         char* token = strtok(buffer, " ");
-        while (token != NULL) {
+        while (token) {
             cmds[cmd_size++] = token;
             token = strtok(NULL, " ");
+        }
+
+        if (!cmd_size) {
+            continue;
         }
 
         switch (_get_cmd(cmds[0])) {

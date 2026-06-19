@@ -1,9 +1,11 @@
 #include <std/mm.h>
 
-static mm_manager_t _manager = { 0 };
-static unsigned char _buffer[ALLOC_BUFFER_SIZE] = { 0 };
-static mm_block_t* _mm_head = (mm_block_t*)_buffer;
-static int _allocated = 0;
+static mm_manager_t _manager                        = { 0 };
+static int _allocated                               = 0;
+#ifndef NON_DEFAULT_MM_MANAGER
+    static unsigned char _buffer[ALLOC_BUFFER_SIZE] = { 0 };
+    static mm_block_t* _mm_head                     = (mm_block_t*)_buffer;
+#endif
 
 static int _mm_init() {
 #ifndef NON_DEFAULT_MM_MANAGER

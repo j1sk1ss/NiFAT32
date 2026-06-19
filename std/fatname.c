@@ -81,7 +81,7 @@ void nft32_extract_name(const char* path, char* name) {
     nft32_str_strcpy(name, path + i);
 }
 
-void unpack_83_name(const char* name83, char* name, char* ext) {
+void nft32_unpack_83_name(const char* name83, char* name, char* ext) {
     if (!name83 || !name || !ext) return;
     for (int i = 0; i < 8; i++) name[i] = name83[i];
     for (int i = 0; i < 3; i++) ext[i]  = name83[8 + i];

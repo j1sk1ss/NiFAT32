@@ -69,12 +69,12 @@ typedef struct directory_entry {
 /*
 Create new empty entry.
 Params:
-- fullname - 8.3 name for entry.
-- is_dir - Is this entry for directory.
-- dca - Data cluster address. 
-        Note: This cluster should be marked as <FREE>.
-- file_size - Size of file. If is_dir==1 not used.
-- entry - Place where data will be saved.
+    - `fullname` - 8.3 name for entry.
+    - `is_dir` - Is this entry for directory.
+    - `dca` - Data cluster address. 
+              Note: This cluster should be marked as <FREE>.
+    - `file_size` - Size of file. If is_dir==1 not used.
+    - `entry` - Place where data will be saved.
 
 Return 1 if entry data generation complete.
 Return 0 if something goes wrong.
@@ -87,12 +87,12 @@ int create_entry(
 /*
 Base iterate function in cluster.
 Params:
-- ca - Cluster address.
-- handler - Directory entry handler with context.
-            Note: If handler returns 0 - iteration will stop after 
-                  it will find the target entry.
-- ctx - Context for function.
-- fi - FS data.
+    - `ca` - Cluster address.
+    - `handler` - Directory entry handler with context.
+                  Note: If handler returns 0 - iteration will stop after 
+                        it will find the target entry.
+    - `ctx` - Context for function.
+    - `fi` - FS data.
 
 Return 1 if iterate success.
 Return 0 if something goes wrong.
@@ -105,9 +105,9 @@ int entry_iterate(
 Index entry by provided cluster. This function will index all data to balanced binary tree.
 Note: Balancing based on Red&Black mechanism and will took a while. Will give more benefits on big directories.
 Params:
-- ca - Entry ca. Should be a directory ca.
-- cache - Pointer to pointer for cache tree.
-- fi - FS data.
+    - `ca` - Entry ca. Should be a directory ca.
+    - `cache` - Pointer to pointer for cache tree.
+    - `fi` - FS data.
 
 Return 1 if binary tree creation complete.
 Return 0 if something goes wrong.
@@ -118,15 +118,15 @@ int entry_index(cluster_addr_t ca, ecache_t** __restrict cache, fat_data_t* __re
 /*
 Search entry in cluster by name. 
 Params:
-- name - Entry name.
-- ca - Cluster address where we should search.
-- cache - Cache of entry. Can be NO_ECACHE or NULL.
-- meta - Storage for entry data.
-- fi - FS data.
+    - `name` - Entry name.
+    - `ca` - Cluster address where we should search.
+    - `cache` - Cache of entry. Can be NO_ECACHE or NULL.
+    - `meta` - Storage for entry data.
+    - `fi` - FS data.
 
 Return 1 if entry was found.
 Return -1 if something goes wrong.
-Return -4 if wntry wasn't found.
+Return -4 if entry wasn't found.
 */
 int entry_search(
     const char* name, cluster_addr_t ca, ecache_t* __restrict cache,
@@ -136,10 +136,10 @@ int entry_search(
 /*
 Add entry to cluster.
 Params:
-- ca - Cluster where entry will be saved.
-- cache - If cache!=NO_ECACHE will insert new cache entry.
-- meta - Entry data for saving.
-- fi - FS data.
+    - `ca` - Cluster where entry will be saved.
+    - `cache` - If cache!=NO_ECACHE will insert new cache entry.
+    - `meta` - Entry data for saving.
+    - `fi` - FS data.
 
 Return 1 if entry has been written.
 Return < 0 if something goes wrong.
@@ -149,10 +149,10 @@ int entry_add(cluster_addr_t ca, ecache_t* __restrict cache, directory_entry_t* 
 /*
 Edit an entry in a cluster.
 Params:
-- `ca` - Cluster where the entry is placed.
-- `name` - Name of the entry for edit.
-- `meta` - New meta for the entry.
-- `fi` - FS data.
+    - `ca` - Cluster where the entry is placed.
+    - `name` - Name of the entry for edit.
+    - `meta` - New meta for the entry.
+    - `fi` - FS data.
 
 Returns 1 if edit was succeed.
 Returns 0 if something went wrong.
@@ -164,10 +164,11 @@ int entry_edit(
 
 /*
 Entry remove just mark entry as free without erasing data.
-- ca - Clyster where entry is placed.
-- name - Name entry for edit.
-- cache - Ecache for directory.
-- fi - FS data.
+Params:
+    - `ca` - Clyster where entry is placed.
+    - `name` - Name entry for edit.
+    - `cache` - Ecache for directory.
+    - `fi` - FS data.
 
 Return 1 if delete success.
 Return 0 if something goes wrong.

@@ -44,7 +44,7 @@ int setup_content(
     else {
         char name[12] = { 0 };
         char ext[6]   = { 0 };
-        unpack_83_name(name83, name, ext);
+        nft32_unpack_83_name(name83, name, ext);
         nft32_str_strncpy(_content_table[ci].file.name, name, 8);
         nft32_str_strncpy(_content_table[ci].file.extension, ext, 3);
     }

@@ -29,49 +29,49 @@ typedef struct {
 } log_io_t;
 
 #ifdef ERROR_LOGS
-    #define print_error(message, ...)   nft32_log_message("ERROR", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_error(message, ...)   LOG_emmit_message("ERROR", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_error(message, ...)   (void)0
 #endif
 
 #ifdef WARNING_LOGS
-    #define print_warn(message, ...)    nft32_log_message("WARN", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_warn(message, ...)    LOG_emmit_message("WARN", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_warn(message, ...)    (void)0
 #endif
 
 #ifdef INFO_LOGS
-    #define print_info(message, ...)    nft32_log_message("INFO", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_info(message, ...)    LOG_emmit_message("INFO", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_info(message, ...)    (void)0
 #endif
 
 #ifdef DEBUG_LOGS
-    #define print_debug(message, ...)   nft32_log_message("DEBUG", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_debug(message, ...)   LOG_emmit_message("DEBUG", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_debug(message, ...)   (void)0
 #endif
 
 #ifdef IO_OPERATION_LOGS
-    #define print_io(message, ...)      nft32_log_message("I/O", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_io(message, ...)      LOG_emmit_message("I/O", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_io(message, ...)      (void)0
 #endif
 
 #ifdef MEM_OPERATION_LOGS
-    #define print_mm(message, ...)      nft32_log_message("MEM", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_mm(message, ...)      LOG_emmit_message("MEM", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_mm(message, ...)      (void)0
 #endif
 
 #ifdef LOGGING_LOGS
-    #define print_log(message, ...)     nft32_log_message("LOG", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_log(message, ...)     LOG_emmit_message("LOG", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_log(message, ...)     (void)0
 #endif
 
 #ifdef SPECIAL_LOGS
-    #define print_spec(message, ...)    nft32_log_message("SPEC", __FILE__, __LINE__, message, ##__VA_ARGS__)
+    #define print_spec(message, ...)    LOG_emmit_message("SPEC", __FILE__, __LINE__, message, ##__VA_ARGS__)
 #else
     #define print_spec(message, ...)    (void)0
 #endif
@@ -86,26 +86,23 @@ typedef struct {
 /*
 Logging init.
 Params:
-- `fd_fprintf` - fprintf function in your platform. Can be NULL (Will disable all logging).
-- `fd_vfprintf` - vfprintf function in your platform. Can be NULL.
-
-Return 1 if setup success.
-Return 0 if something goes wrong.
+    - `fd_fprintf` - fprintf function in your platform. Can be 'NULL' (Will disable all logging).
+    - `fd_vfprintf` - vfprintf function in your platform. Can be 'NULL'.
 */
-int LOG_setup(
+void LOG_setup(
     int (*fd_fprintf)(const char*, ...),
     int (*fd_vfprintf)(const char*, va_list)
 );
 
 /*
 Create log message.
-
-- `level` - Log level.
-- `file` - File name.
-- `line` - Code line number.
-- message - Additional info message.
+Params:
+    - `level` - Log level.
+    - `file` - File name.
+    - `line` - Code line number.
+    - `message` - Additional info message.
 */
-int nft32_log_message(const char* level, const char* file, int line, const char* message, ...);
+void LOG_emmit_message(const char* level, const char* file, int line, const char* message, ...);
 
 #ifdef __cplusplus
 }

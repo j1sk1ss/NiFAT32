@@ -51,10 +51,10 @@ typedef struct {
 } directory_t;
 
 typedef enum {
-    CONTENT_TYPE_UNKNOWN,
-    CONTENT_TYPE_FILE,
-    CONTENT_TYPE_DIRECTORY,
-    CONTENT_TYPE_EMPTY
+    CONTENT_TYPE_UNKNOWN   = 0b001,
+    CONTENT_TYPE_FILE      = 0b010,
+    CONTENT_TYPE_DIRECTORY = 0b011,
+    CONTENT_TYPE_EMPTY     = 0b100
 } content_type_t;
 
 typedef struct {
@@ -67,12 +67,12 @@ typedef struct {
         file_t        file;
     };
     
-    content_index_t   index;          /* If this is a directory - Index data  */
-    cluster_addr_t    parent_cluster; /* Claster where is the entry is placed */
-    cluster_addr_t    data_cluster;   /* Head data claster of the entry       */
-    directory_entry_t meta;           /* The entry                            */
-    content_type_t    content_type;
-    unsigned char     mode;           /* Open mode                            */
+    content_index_t   index;            /* If this is a directory - Index data  */
+    cluster_addr_t    parent_cluster;   /* Claster where is the entry is placed */
+    cluster_addr_t    data_cluster;     /* Head data claster of the entry       */
+    directory_entry_t meta;             /* The entry                            */
+    unsigned int      content_type : 3; /* content_type_t                       */
+    unsigned char     mode;             /* Open mode                            */
 } content_t;
 
 #define NOT_PRESENT 0x00 /* The entry hasn't allocated */

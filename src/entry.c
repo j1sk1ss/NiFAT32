@@ -10,6 +10,7 @@ static int _validate_entry(directory_entry_t* entry) {
         return 0;
     }
 #endif
+    UNUSED(entry);
     return 1;
 }
 
