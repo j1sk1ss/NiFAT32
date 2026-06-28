@@ -11,6 +11,7 @@ Dependencies:
     - std/logging.h - Logging helpers.
     - std/hamming.h - Encoded data helpers.
     - std/fatname.h - FAT 8.3 name conversion.
+    - std/fattime.h - FAT time/date helpers.
     - std/checksum.h - Entry checksum type.
     - nft32/ecache.h - Entry cache structures.
     - nft32/errors.h - Error registration.
@@ -29,6 +30,7 @@ extern "C" {
 #include <std/logging.h>
 #include <std/hamming.h>
 #include <std/fatname.h>
+#include <std/fattime.h>
 #include <std/checksum.h>
 #include <nft32/ecache.h>
 #include <nft32/errors.h>
@@ -57,13 +59,23 @@ typedef struct {
 /* from http://wiki.osdev.org/FAT */
 /* From file_system.h (CordellOS brunch FS_based_on_FAL) */
 typedef struct directory_entry {
-    unsigned char  file_name[11];
-    checksum_t     name_hash;
-    unsigned char  attributes;
-    cluster_addr_t rca; // root cluster
-    cluster_addr_t dca; // data cluster
-    unsigned int   file_size;
-    checksum_t     checksum;
+    unsigned char      file_name[11];
+    checksum_t         name_hash;
+    unsigned char      attributes;
+#ifdef ENTRY_WITH_TIME
+    struct {
+        unsigned char  creation_time_tenths;
+        unsigned short creation_time;
+        unsigned short creation_date;
+        unsigned short last_accessed;
+        unsigned short last_modification_time;
+        unsigned short last_modification_date;
+    } entry_time;
+#endif
+    cluster_addr_t     rca; // root cluster
+    cluster_addr_t     dca; // data cluster
+    unsigned int       file_size;
+    checksum_t         checksum;
 } __attribute__((packed)) directory_entry_t;
 
 /*
@@ -71,17 +83,30 @@ Create new empty entry.
 Params:
     - `fullname` - 8.3 name for entry.
     - `is_dir` - Is this entry for directory.
-    - `dca` - Data cluster address. 
+    - `first_cluster` - Data cluster address.
               Note: This cluster should be marked as <FREE>.
     - `file_size` - Size of file. If is_dir==1 not used.
     - `entry` - Place where data will be saved.
+    When ENTRY_WITH_TIME is defined, these extra creation timestamp fields
+    must also be passed. They initialize the entry creation time/date fields,
+    and last_accessed is initialized from the creation date:
+    - `second` - Creation second.
+    - `centisecond` - Creation centisecond value for FAT creation tenths.
+    - `hour` - Creation hour.
+    - `minute` - Creation minute.
+    - `year` - Creation year.
+    - `mounth` - Creation month.
+    - `day` - Creation day.
 
 Return 1 if entry data generation complete.
 Return 0 if something goes wrong.
 */
 int create_entry(
-    const char* fullname, char is_dir, cluster_addr_t dca, 
-    unsigned int file_size, directory_entry_t* entry
+    const char* fullname, char is_dir, cluster_addr_t first_cluster, unsigned int file_size, 
+#ifdef ENTRY_WITH_TIME
+    int second, int centisecond, int hour, int minute, int year, int mounth, int day,
+#endif
+    directory_entry_t* entry
 );
 
 /*

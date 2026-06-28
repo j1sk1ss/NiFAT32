@@ -129,6 +129,34 @@ Boolean Make variables accept `0` or `1` and default to `0`.
 | `NO_ENTRY_VALIDATION` | `NO_ENTRY_VALIDATION` | Skips directory-entry checksum validation |
 | - | `NO_THREADSAFE` | Make the FS not thread safe (exclude related code from the final binary) |
 | - | `NO_HAMMING` | Exclude all hamming-code related logic |
+| - | `ENTRY_WITH_TIME` | Adds timestamp fields to directory entries; this changes the `create_entry` function signature and increases the size of each entry |
+
+`ENTRY_WITH_TIME` is a C macro-only option. It stores FAT-style timestamp fields in each `directory_entry_t`, so fewer entries fit in one decoded directory cluster. Callers must also pass timestamp values to `create_entry`.
+
+For instance, this is the signature without this flag:
+
+```c
+create_entry(fullname, is_dir, first_cluster, file_size, entry);
+```
+
+And this is with `ENTRY_WITH_TIME`:
+
+```c
+create_entry(
+    fullname,
+    is_dir,
+    first_cluster,
+    file_size,
+    second,
+    centisecond,
+    hour,
+    minute,
+    year,
+    mounth,
+    day,
+    entry
+);
+```
 
 Numeric configuration variables:
 

@@ -325,7 +325,11 @@ int entry_remove(cluster_addr_t ca, const char* name, ecache_t* __restrict cache
 }
 
 int create_entry(
-    const char* fullname, char is_dir, cluster_addr_t first_cluster, unsigned int file_size, directory_entry_t* entry
+    const char* fullname, char is_dir, cluster_addr_t first_cluster, unsigned int file_size, 
+#ifdef ENTRY_WITH_TIME
+    int second, int centisecond, int hour, int minute, int year, int mounth, int day,
+#endif
+    directory_entry_t* entry
 ) {
     entry->checksum = 0;
     entry->rca = FAT_CLUSTER_BAD;
@@ -339,6 +343,13 @@ int create_entry(
         entry->file_size  = file_size;
         entry->attributes = FILE_ARCHIVE;
     }
+
+#ifdef ENTRY_WITH_TIME
+    entry->creation_time_tenths = NFT32_MAKE_CREATION_TIME_TENTHS(second, centisecond);
+    entry->creation_time        = NFT32_MAKE_TIME(hour, minute, second);
+    entry->creation_date        = NFT32_MAKE_DATE(year, mounth, day);
+    entry->last_accessed        = entry->creation_date;
+#endif
 
     nft32_str_memcpy(entry->file_name, fullname, 11);
     entry->name_hash = nft32_murmur3_x86_32((const_buffer_t)entry->file_name, sizeof(entry->file_name), 0);

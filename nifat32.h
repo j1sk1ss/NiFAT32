@@ -51,7 +51,7 @@ extern "C" {
 #include <nft32/cluster.h>
 #include <nft32/fatinfo.h>
 
-#define NIFAT32_VERSION "phoenix_160626"
+#define NIFAT32_VERSION "phoenix_280626"
 
 /* Bpb taken from http://wiki.osdev.org/FAT */
 typedef struct fat_extBS_32 {
