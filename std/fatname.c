@@ -78,6 +78,7 @@ void nft32_path_to_fatnames(const char* path, char* fatnames) {
 void nft32_extract_name(const char* path, char* name) {
     int i;
     for (i = nft32_str_strlen(path); path[i] != PATH_SPLITTER && i > 0; i--);
+    if (path[i] == PATH_SPLITTER) i++;
     nft32_str_strcpy(name, path + i);
 }
 
