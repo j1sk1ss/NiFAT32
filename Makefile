@@ -9,12 +9,15 @@ OBJ_DIR := $(BUILD_DIR)/obj
 SHARED_LIBRARY := $(BUILD_DIR)/nifat32.so
 STATIC_LIBRARY := $(BUILD_DIR)/nifat32.a
 UNIX_EXECUTABLE := $(BUILD_DIR)/unix_nifat32
+UNIT_TEST_EXECUTABLE := $(BUILD_DIR)/utests/unit_tests
 CONFIG_FILE := $(OBJ_DIR)/.build-flags
 
 LIB_SOURCES := nifat32.c $(wildcard src/*.c) $(wildcard std/*.c)
 LIB_OBJECTS := $(patsubst %.c,$(OBJ_DIR)/%.o,$(LIB_SOURCES))
 UNIX_OBJECT := $(OBJ_DIR)/unix_nifat32.o
-DEPENDENCIES := $(LIB_OBJECTS:.o=.d) $(UNIX_OBJECT:.o=.d)
+UNIT_TEST_SOURCES := $(wildcard utests/*.c)
+UNIT_TEST_OBJECTS := $(patsubst %.c,$(OBJ_DIR)/%.o,$(UNIT_TEST_SOURCES))
+DEPENDENCIES := $(LIB_OBJECTS:.o=.d) $(UNIX_OBJECT:.o=.d) $(UNIT_TEST_OBJECTS:.o=.d)
 
 CPPFLAGS ?=
 CFLAGS ?= -O2
@@ -121,7 +124,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: all shared static unix formatter tools clean distclean help FORCE
+.PHONY: all shared static unix unit-tests formatter tools clean distclean help FORCE
 
 all: shared
 
@@ -130,6 +133,9 @@ shared: $(SHARED_LIBRARY)
 static: $(STATIC_LIBRARY)
 
 unix: $(UNIX_EXECUTABLE)
+
+unit-tests: $(UNIT_TEST_EXECUTABLE)
+	$<
 
 formatter:
 	$(MAKE) -C formatter
@@ -144,6 +150,10 @@ $(STATIC_LIBRARY): $(LIB_OBJECTS) | $(BUILD_DIR)
 
 $(UNIX_EXECUTABLE): $(LIB_OBJECTS) $(UNIX_OBJECT) | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) -o $@ $(UNIX_OBJECT) $(LIB_OBJECTS) $(LDLIBS)
+
+$(UNIT_TEST_EXECUTABLE): $(LIB_OBJECTS) $(UNIT_TEST_OBJECTS) | $(BUILD_DIR)
+	@$(MKDIR_P) $(dir $@)
+	$(CC) $(LDFLAGS) -o $@ $(UNIT_TEST_OBJECTS) $(LIB_OBJECTS) $(LDLIBS)
 
 $(OBJ_DIR)/%.o: %.c $(CONFIG_FILE)
 	@$(MKDIR_P) $(dir $@)
@@ -161,7 +171,7 @@ FORCE:
 
 clean:
 	$(RM) -r $(OBJ_DIR)
-	$(RM) $(SHARED_LIBRARY) $(STATIC_LIBRARY) $(UNIX_EXECUTABLE)
+	$(RM) $(SHARED_LIBRARY) $(STATIC_LIBRARY) $(UNIX_EXECUTABLE) $(UNIT_TEST_EXECUTABLE)
 
 distclean: clean
 	$(MAKE) -C formatter clean
@@ -172,6 +182,7 @@ help:
 	  '  all, shared  Build builds/nifat32.so (default)' \
 	  '  static       Build builds/nifat32.a' \
 	  '  unix         Build builds/unix_nifat32' \
+	  '  unit-tests   Build and run utests/unit_tests.c' \
 	  '  formatter    Build formatter/formatter' \
 	  '  tools        Build the formatter and Unix utility' \
 	  '  clean        Remove root build artifacts' \
