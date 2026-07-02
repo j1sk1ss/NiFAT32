@@ -51,7 +51,7 @@ Note: Will allocate total_cluster * sizeof(uint32_t).
 [Thread-safe]
 
 Params:
-- fi - Pointer to FS info.
+    - `fi` - Pointer to FS info.
 
 Return 1 if init success.
 Return 0 if something goes wrong.
@@ -64,7 +64,7 @@ WARN: This operation really slow. Invoke it before start and only ones.
 [Thread-safe]
 
 Params:
-- fi - FS info.
+    - `fi` - FS info.
 
 Return 1 if hard load success.
 Return 0 if something goes wrong.
@@ -85,11 +85,23 @@ Iterate entire FAT and repair it with majority voting approach.
 [Thread-safe]
 
 Params:
-    - fi - FS info.
+    - `fi` - FS info.
 
 Always returns 1.
 */
 int fat_repair(fat_data_t* fi);
+
+/*
+Read full FAT copy by index to dst.
+Params:
+    - `index` - FAT index.
+    - `dst` - Destination buffer.
+    - `size` - Destination buffer size.
+    - `fi` - FS info.
+
+Always returns 1.
+*/
+// int fat_read_entire_table(int index, cluster_val_t* dst, unsigned int size, fat_data_t* fi);
 
 /*
 Read 4 bytes from FAT for target cluster.
@@ -98,8 +110,8 @@ Note 2: Fix bit-errors if major voting works correct.
 [Thread-safe]
 
 Params:
-- ca - Target claster address.
-- fi - FS info.
+    - `ca` - Target claster address.
+    - `fi` - FS info.
 
 Return cluster value or FAT_CLUSTER_BAD on error.
 - 
@@ -112,8 +124,8 @@ Note: Will sync all FAT copies.
 [Thread-safe]
 
 Params:
-- ca - Target claster address.
-- fi - FS info.
+    - `ca` - Target claster address.
+    - `fi` - FS info.
 
 Return 1 if write success.
 Return 0 if something goes wrong.

@@ -3,6 +3,26 @@
 static cluster_val_t* _fat = NULL;
 static lock_t _fat_lock = NULL_LOCK;
 
+// TODO:
+// int fat_read_entire_table(int index, cluster_val_t* dst, unsigned int size, fat_data_t* fi) {
+//     cluster_offset_t fat_size = size * sizeof(cluster_val_t) * sizeof(encoded_t);
+//     sector_addr_t fat_sector = fi->sectors_padd + GET_FATSECTOR(index, fi->total_sectors);
+
+//     if (
+//         !DSK_readoff_sectors(
+//             fat_sector, 0, (unsigned char*)dst, fat_size, (fat_size + fi->bytes_per_sector - 1) / fi->bytes_per_sector
+//         )
+//     ) {
+//         print_error("Could not read entire NiFAT32 table.");
+//         errors_register_error(READ_FAT_ERROR, fi);
+//         return 0;
+//     }
+
+//     nft32_unpack_memory((const encoded_t*)dst, (byte_t*)dst, size * sizeof(cluster_val_t));
+//     for (cluster_addr_t ca = 0; ca < size; ca++) dst[ca] &= 0x0FFFFFFF;
+//     return 1;
+// }
+
 int fat_cache_init(fat_data_t* fi) {
 #ifndef NO_FAT_CACHE
     if (_fat) return 1;
@@ -71,7 +91,7 @@ static int __write_fat__(cluster_addr_t ca, cluster_status_t value, fat_data_t* 
     if (
         !DSK_writeoff_sectors(fat_sector, fat_offset % fi->bytes_per_sector, (const unsigned char*)table_buffer, sizeof(table_buffer), 1)
     ) {
-        print_error("Could not write new FAT32 cluster number to sector.");
+        print_error("Could not write new NiFAT32 cluster number to sector.");
         errors_register_error(WRITE_FAT_ERROR, fi);
         return 0;
     }
@@ -123,7 +143,7 @@ static cluster_val_t __read_fat__(cluster_addr_t ca, fat_data_t* fi, int fat) {
     if (
         !DSK_readoff_sectors(fat_sector, fat_offset % fi->bytes_per_sector, (unsigned char*)table_buffer, sizeof(table_buffer), 1
     )) {
-        print_error("Could not read sector that contains FAT32 table entry needed.");
+        print_error("Could not read sector that contains NiFAT32 table entry needed.");
         errors_register_error(READ_FAT_ERROR, fi);
         return FAT_CLUSTER_BAD;
     }
