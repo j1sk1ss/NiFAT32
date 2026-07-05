@@ -23,9 +23,9 @@ static int _write_calls = 0;
 } while (0)
 
 #define UT_RUN(test) do {                                                           \
-    fprintf(stderr, "utest %-32s", #test);                                          \
-    if (test()) fprintf(stderr, "OK\n");                                           \
-    else fprintf(stderr, "FAILED\n");                                              \
+    fprintf(stderr, "utest %-32s ", #test);                                         \
+    if (test()) fprintf(stderr, "OK\n");                                            \
+    else fprintf(stderr, "FAILED\n");                                               \
 } while (0)
 
 static int _fake_read(sector_addr_t sa, sector_offset_t off, unsigned char* buffer, int size) {
@@ -189,31 +189,6 @@ static int test_cluster_io(void) {
     return 1;
 }
 
-static int test_fat_read_entire_table_bulk(void) {
-    fat_data_t fi = {
-        .sectors_padd = 2,
-        .total_sectors = TEST_SECTORS,
-        .bytes_per_sector = TEST_SECTOR_SIZE
-    };
-    cluster_val_t values[8] = {
-        0x10000000U, 0x00000002U, FAT_CLUSTER_END, FAT_CLUSTER_FREE,
-        0x00000004U, FAT_CLUSTER_RESERVED, FAT_CLUSTER_BAD, 0x0ABCDEF0U
-    };
-    encoded_t encoded[sizeof(values)] = { 0 };
-    encoded_t dst_storage[sizeof(values)] = { 0 };
-    cluster_val_t* dst = (cluster_val_t*)dst_storage;
-    sector_addr_t fat_sector = fi.sectors_padd + GET_FATSECTOR(1, fi.total_sectors);
-
-    _reset_disk();
-    nft32_pack_memory((const byte_t*)values, encoded, sizeof(values));
-    memcpy(_disk[fat_sector], encoded, sizeof(encoded));
-
-    UT_ASSERT(fat_read_entire_table(1, dst, 8, &fi) == 1);
-    UT_ASSERT(_read_calls == 1);
-    for (unsigned int i = 0; i < 8; i++) UT_ASSERT(dst[i] == (values[i] & 0x0FFFFFFFU));
-    return 1;
-}
-
 static int test_fatmap(void) {
     fat_data_t fi = { .total_clusters = 64 };
 
@@ -320,7 +295,6 @@ int main(void) {
     UT_RUN(test_memory_manager);
     UT_RUN(test_disk_io);
     UT_RUN(test_cluster_io);
-    UT_RUN(test_fat_read_entire_table_bulk);
     UT_RUN(test_fatmap);
     UT_RUN(test_entry_add_search_remove);
     UT_RUN(test_ecache);

@@ -52,14 +52,46 @@ https://en.wikipedia.org/wiki/Golden_ratio
 #define ENTRY_JAPAN          0x05
 #define LAST_LONG_ENTRY      0x40
 
-#define BOOT_MULTIPLIER    2654435761U // Knuth's multiplier (2^32 / φ)
-#define FAT_MULTIPLIER     340573321U
-#define JOURNAL_MULTIPLIER 12983229U
-#define ERRORS_MULTIPLIER  10986542U
-#define GET_BOOTSECTOR(n, ts)    (((((n) + 1) * BOOT_MULTIPLIER) >> 11) % (ts - 2))
-#define GET_FATSECTOR(n, ts)     (((((n) + 7) * FAT_MULTIPLIER) >> 13) % (ts - 32))
-#define GET_JOURNALSECTOR(n, ts) (((((n) + 35) * JOURNAL_MULTIPLIER) >> 3) % (ts - 2))
-#define GET_ERRORSSECTOR(n, ts)  (((((n) + 23) * ERRORS_MULTIPLIER) >> 9) % (ts - 2))
+
+/* 32-bit mixing function */
+static inline unsigned int mix32(unsigned int x) {
+    x ^= x >> 16;
+    x *= 0x7FEB352D;
+    x ^= x >> 15;
+    x *= 0x846CA68B;
+    x ^= x >> 16;
+    return x;
+}
+
+/* Type-specific seeds */
+#define BOOT_SEED       0xA341316Cu
+#define FAT_SEED        0xC8013EA4u
+#define JOURNAL_SEED    0xAD90777Du
+#define ERRORS_SEED     0x7E95761Eu
+
+/* Journals placement */
+#if !defined(GET_JOURNALSECTOR)
+    #define GET_JOURNALSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + JOURNAL_SEED) % ((unsigned int)(ts) - 2u)))
+#endif
+
+/* Boot sectors placement */
+#if !defined(GET_BOOTSECTOR)
+    #define GET_BOOTSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + BOOT_SEED) % ((unsigned int)(ts) - 2u)))
+#endif
+
+/* File Allocation Tables placement */
+#if !defined(GET_FATSECTOR)
+    #define GET_FATSECTOR(n, ts) \
+        (23u + (mix32((unsigned int)(n) + FAT_SEED) % ((unsigned int)(ts) - 23u)))
+#endif
+
+/* Error sectors placement */
+#if !defined(GET_ERRORSSECTOR)
+    #define GET_ERRORSSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + ERRORS_SEED) % ((unsigned int)(ts) - 2u)))
+#endif
 
 #define BYTES_PER_SECTOR     512
 #define SECTORS_PER_CLUSTER  8

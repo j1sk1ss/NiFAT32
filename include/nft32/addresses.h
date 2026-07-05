@@ -4,39 +4,50 @@
 extern "C" {
 #endif
 
+static inline unsigned int mix32(unsigned int x) {
+    x ^= x >> 16;
+    x *= 0x7FEB352D;
+    x ^= x >> 15;
+    x *= 0x846CA68B;
+    x ^= x >> 16;
+    return x;
+}
+
+/* Type-specific seeds */
+#define BOOT_SEED       0xA341316Cu
+#define FAT_SEED        0xC8013EA4u
+#define JOURNAL_SEED    0xAD90777Du
+#define ERRORS_SEED     0x7E95761Eu
+#define OFFSET_SEED     0xC07DEE11u
+
 /* Journals placement */
-#if !defined(JOURNAL_MULTIPLIER) && \
-    !defined(GET_JOURNALSECTOR) 
-    #define JOURNAL_MULTIPLIER       12983229U
-    #define GET_JOURNALSECTOR(n, ts) (((((n) + 35) * JOURNAL_MULTIPLIER) >> 3) % (ts - 2))
+#if !defined(GET_JOURNALSECTOR)
+    #define GET_JOURNALSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + JOURNAL_SEED) % ((unsigned int)(ts) - 2u)))
 #endif
 
 /* Boot sectors placement */
-#if !defined(BOOT_MULTIPLIER) && \
-    !defined(GET_BOOTSECTOR)
-    #define BOOT_MULTIPLIER          2654435761U // Knuth's multiplier (2^32 / φ)
-    #define GET_BOOTSECTOR(n, ts)    (((((n) + 1) * BOOT_MULTIPLIER) >> 11) % (ts - 2))
+#if !defined(GET_BOOTSECTOR)
+    #define GET_BOOTSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + BOOT_SEED) % ((unsigned int)(ts) - 2u)))
 #endif
 
 /* File Allocation Tables placement */
-#if !defined(FAT_MULTIPLIER) && \
-    !defined(GET_FATSECTOR)
-    #define FAT_MULTIPLIER           340573321U
-    #define GET_FATSECTOR(n, ts)     (((((n) + 7) * FAT_MULTIPLIER) >> 13) % (ts - 23))
-#endif 
-
-/* Error sectors placement */
-#if !defined(ERRORS_MULTIPLIER) && \
-    !defined(GET_ERRORSSECTOR)
-    #define ERRORS_MULTIPLIER        10986542U
-    #define GET_ERRORSSECTOR(n, ts)  (((((n) + 23) * ERRORS_MULTIPLIER) >> 9) % (ts - 2))
+#if !defined(GET_FATSECTOR)
+    #define GET_FATSECTOR(n, ts) \
+        (23u + (mix32((unsigned int)(n) + FAT_SEED) % ((unsigned int)(ts) - 23u)))
 #endif
 
-/* Offset for a cluster */
-#if !defined(CLUSTERS_MULTIPLIER) && \
-    !defined(GET_CLUSTER_OFF)
-    #define CLUSTERS_MULTIPLIER      3024953U
-    #define GET_CLUSTER_OFF(n, tc)   (((((n) + 11) * CLUSTERS_MULTIPLIER) >> 1) % (tc))
+/* Error sectors placement */
+#if !defined(GET_ERRORSSECTOR)
+    #define GET_ERRORSSECTOR(n, ts) \
+        (2u + (mix32((unsigned int)(n) + ERRORS_SEED) % ((unsigned int)(ts) - 2u)))
+#endif
+
+/* Error sectors placement */
+#if !defined(GET_CLUSTER_OFF)
+    #define GET_CLUSTER_OFF(n, ts) \
+        (23u + (mix32((unsigned int)(n) + OFFSET_SEED) % ((unsigned int)(ts) - 23u)))
 #endif
 
 #ifdef __cplusplus
