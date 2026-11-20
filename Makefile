@@ -10,6 +10,8 @@ SHARED_LIBRARY := $(BUILD_DIR)/nifat32.so
 STATIC_LIBRARY := $(BUILD_DIR)/nifat32.a
 UNIX_EXECUTABLE := $(BUILD_DIR)/unix_nifat32
 UNIT_TEST_EXECUTABLE := $(BUILD_DIR)/utests/unit_tests
+UT_IMAGE := $(BUILD_DIR)/utests/nifat32.img
+UT_IMAGE_SIZE ?= 16
 CONFIG_FILE := $(OBJ_DIR)/.build-flags
 
 LIB_SOURCES := nifat32.c $(wildcard src/*.c) $(wildcard std/*.c)
@@ -124,7 +126,8 @@ endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: all shared static unix unit-tests formatter tools clean distclean help FORCE
+.PHONY: all shared static unix unit-tests formatter tools clean distclean help FORCE \
+        unit
 
 all: shared
 
@@ -135,7 +138,15 @@ static: $(STATIC_LIBRARY)
 unix: $(UNIX_EXECUTABLE)
 
 unit-tests: $(UNIT_TEST_EXECUTABLE)
-	$<
+
+# Test systems
+#   unit        - unit tests: C tests of tools + single filesystem runs (in-memory image)
+unit: unit-tests
+	@$(MKDIR_P) $(dir $(UT_IMAGE))
+	$(MAKE) -C formatter
+	@(cd formatter && ./formatter -o nifat32.img -s nifat32 --volume-size $(UT_IMAGE_SIZE) --spc 8 --fc 5 --bsbc 5 --b-bsbc 0 --jc 0 --ec 0)
+	@mv -f formatter/nifat32.img $(UT_IMAGE)
+	@cd $(dir $(UT_IMAGE)) && $(abspath $(UNIT_TEST_EXECUTABLE)) $(notdir $(UT_IMAGE))
 
 formatter:
 	$(MAKE) -C formatter
@@ -182,7 +193,8 @@ help:
 	  '  all, shared  Build builds/nifat32.so (default)' \
 	  '  static       Build builds/nifat32.a' \
 	  '  unix         Build builds/unix_nifat32' \
-	  '  unit-tests   Build and run utests/unit_tests.c' \
+	  '  unit-tests   Build the unit test binary (utests/)' \
+	  '  unit         Build + format image + run unit tests (tools + single FS runs)' \
 	  '  formatter    Build formatter/formatter' \
 	  '  tools        Build the formatter and Unix utility' \
 	  '  clean        Remove root build artifacts' \
