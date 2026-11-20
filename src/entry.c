@@ -134,13 +134,17 @@ static int _edit_handler(entry_info_t* info, directory_entry_t* entry, void* ctx
     if (context->name_hash != entry->name_hash) return 0;
     if (nft32_str_strncmp((char*)entry->file_name, context->name, 11)) return 0;
 
+    context->meta->rca = info->ca;
+    context->meta->checksum = 0;
+    context->meta->checksum = nft32_murmur3_x86_32((const_buffer_t)context->meta, sizeof(directory_entry_t), 0);
+
     context->ji = journal_add_operation(EDIT_OP, info->ca, info->offset, (unsqueezed_entry_t*)context->meta, context->fi);
     if (context->index != NO_ECACHE) {
         checksum_t src, dst;
         src = nft32_murmur3_x86_32((const_buffer_t)context->name, 11, 0);
         ecache_delete(context->index, src);
-        dst = nft32_murmur3_x86_32((const_buffer_t)entry->file_name, sizeof(entry->file_name), 0);
-        ecache_insert(context->index, dst, (entry->attributes & FILE_DIRECTORY) != FILE_DIRECTORY, entry->dca);
+        dst = nft32_murmur3_x86_32((const_buffer_t)context->meta->file_name, sizeof(context->meta->file_name), 0);
+        ecache_insert(context->index, dst, (context->meta->attributes & FILE_DIRECTORY) != FILE_DIRECTORY, context->meta->dca);
     }
 
     nft32_str_memcpy(entry, context->meta, sizeof(directory_entry_t));
