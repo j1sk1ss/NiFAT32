@@ -1,0 +1,5 @@
+# Many files: create N files in root, index them, random open+read
+# test-size = number of files
+@test test_nifat32_many_files
+@test-size 200
+@runs 2

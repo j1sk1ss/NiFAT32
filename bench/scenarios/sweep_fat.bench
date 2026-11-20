@@ -1,0 +1,3 @@
+# Sweep the FAT count and measure FAT read/write latency for each value
+@test test_nifat32_cluster_time
+@sweep fat-count 1 5 1

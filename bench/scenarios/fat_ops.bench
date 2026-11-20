@@ -1,0 +1,3 @@
+# FAT operations: read_fat / write_fat latency
+@test test_nifat32_cluster_time
+@runs 3

@@ -1,0 +1,5 @@
+# Init time with progressively corrupted bootsector copies.
+# Destructive: the test zeroes BS copies one by one, so a fresh image
+# is built for every run.
+@test test_nifat32_different_bs
+@runs 1

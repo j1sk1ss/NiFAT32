@@ -1,0 +1,5 @@
+# CRUD throughput: create / open / write / read / rename / copy loop
+# test-size = number of iterations
+@test test_nifat32_benchmark
+@test-size 200
+@runs 2

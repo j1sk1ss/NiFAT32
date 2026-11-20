@@ -1,0 +1,3 @@
+# Cold boot: how long NIFAT32_init takes on a pristine image
+@test test_nifat32_boot
+@runs 3

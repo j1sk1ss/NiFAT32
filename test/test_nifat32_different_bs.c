@@ -21,7 +21,7 @@ int main() {
 
         char buffer[512] = { 0 };
 #ifdef V_SIZE
-        int ts = V_SIZE / DSK_get_sector_size();
+        int ts = (V_SIZE * 1024 * 1024) / DSK_get_sector_size();
 #else
         int ts = (64 * 1024 * 1024) / DSK_get_sector_size();
 #endif
