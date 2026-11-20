@@ -180,7 +180,7 @@ int NIFAT32_content_exists(const char* path);
 #define DIR_TARGET  0b0010
 
 /* Pack mode */
-#define MODE(mode, target) (((target & 0b1111) << 4) | (mode & 0b1111))
+#define MODE(mode, target) ((((target) & 0b1111) << 4) | ((mode) & 0b1111))
 
 /* Default mode (RW) */
 #define DF_MODE MODE((R_MODE | W_MODE), NO_TARGET)
