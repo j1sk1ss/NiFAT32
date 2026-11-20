@@ -127,7 +127,7 @@ endif
 .DEFAULT_GOAL := all
 
 .PHONY: all shared static unix unit-tests formatter tools clean distclean help FORCE \
-        unit
+        unit integration
 
 all: shared
 
@@ -141,12 +141,16 @@ unit-tests: $(UNIT_TEST_EXECUTABLE)
 
 # Test systems
 #   unit        - unit tests: C tests of tools + single filesystem runs (in-memory image)
+#   integration - integration tests: unix_nifat32 driven by declarative scenarios
 unit: unit-tests
 	@$(MKDIR_P) $(dir $(UT_IMAGE))
 	$(MAKE) -C formatter
 	@(cd formatter && ./formatter -o nifat32.img -s nifat32 --volume-size $(UT_IMAGE_SIZE) --spc 8 --fc 5 --bsbc 5 --b-bsbc 0 --jc 0 --ec 0)
 	@mv -f formatter/nifat32.img $(UT_IMAGE)
 	@cd $(dir $(UT_IMAGE)) && $(abspath $(UNIT_TEST_EXECUTABLE)) $(notdir $(UT_IMAGE))
+
+integration: tools
+	python3 itests/run_integration.py --root . $(INTEG_ARGS)
 
 formatter:
 	$(MAKE) -C formatter
@@ -195,6 +199,7 @@ help:
 	  '  unix         Build builds/unix_nifat32' \
 	  '  unit-tests   Build the unit test binary (utests/)' \
 	  '  unit         Build + format image + run unit tests (tools + single FS runs)' \
+	  '  integration  Run integration scenarios (itests/, unix_nifat32)' \
 	  '  formatter    Build formatter/formatter' \
 	  '  tools        Build the formatter and Unix utility' \
 	  '  clean        Remove root build artifacts' \
@@ -203,6 +208,7 @@ help:
 	  'Examples:' \
 	  '  make DEBUG=1 ERROR_LOGS=1 WARN_LOGS=1' \
 	  '  make static NIFAT32_RO=1 NO_HEAP=1' \
-	  '  make unix LOGGING_LOGS=1'
+	  '  make unix LOGGING_LOGS=1' \
+	  '  make integration INTEG_ARGS="--scenario basic_crud"'
 
 -include $(DEPENDENCIES)

@@ -1,0 +1,18 @@
+# Nested directory creation and navigation
+# Note: the prompt shows the full 8.3 uppercase path from the root
+mkdir level1
+cd level1
+expect: LEVEL1 >
+mkdir level2
+cd level2
+expect: LEVEL1/LEVEL2 >
+mkfile deep txt
+write deep.txt nested dir data check
+read deep.txt
+expect: nested
+cd ..
+ls
+expect: LEVEL2
+cd ..
+ls
+expect: LEVEL1

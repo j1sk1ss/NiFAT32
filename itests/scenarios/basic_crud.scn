@@ -1,0 +1,18 @@
+# Basic CRUD flow: mkdir, cd, mkfile, write, read, ls, rm
+# Note: names and the prompt are 8.3 uppercase, write stores the first
+# token only (512-byte over-read from the token, NUL terminated on read)
+mkdir first
+cd first
+expect: FIRST >
+mkfile hello txt
+write hello.txt integration basic crud test
+read hello.txt
+expect: integration
+ls
+expect: HELLO.TXT
+rm hello.txt
+ls
+expect-not: HELLO.TXT
+cd ..
+ls
+expect: FIRST

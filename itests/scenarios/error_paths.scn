@@ -1,0 +1,16 @@
+# Error handling for missing content and cd fallback
+read missing.txt
+expect: Content not found!
+rm missing.txt
+expect: Content not found!
+write missing.txt whatever
+expect: Content not found!
+mkdir ghost
+cd ghost
+expect: GHOST >
+# cd to a missing directory silently falls back to the parent (same prompt)
+cd nowhere
+expect: GHOST >
+cd ..
+get_le
+expect: Last error code

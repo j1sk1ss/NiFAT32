@@ -1,0 +1,19 @@
+# Shallow copy and deep move within a directory
+mkdir pair
+cd pair
+expect: PAIR >
+mkfile afile txt
+mkfile bfile txt
+write afile.txt shallow copy payload here
+cp afile.txt bfile.txt
+read bfile.txt
+expect: shallow
+ls
+expect: AFILE.TXT
+expect: BFILE.TXT
+mv afile.txt moved.txt
+ls
+expect: MOVED.TXT
+expect-not: AFILE.TXT
+read moved.txt
+expect: shallow

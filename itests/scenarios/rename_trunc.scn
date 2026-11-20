@@ -1,0 +1,13 @@
+# Rename and truncate at the root directory
+# Note: unix_nifat32 frename works at the root (tool limitation)
+mkfile oldfile txt
+write oldfile.txt rename and truncate payload
+frename oldfile.txt newfile dat
+ls
+expect: NEWFILE.DAT
+expect-not: OLDFILE.TXT
+read newfile.dat
+expect: rename
+trunc newfile.dat 0 32
+read newfile.dat
+expect: rename
