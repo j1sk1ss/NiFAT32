@@ -109,6 +109,7 @@ int stat_content(const ci_t ci, cinfo_t* info) {
             break;
         }
         case CONTENT_TYPE_FILE: {
+            info->size = _content_table[ci].meta.file_size;
             nft32_str_memcpy(info->full_name, _content_table[ci].meta.file_name, 11);
             nft32_str_strncpy(info->name, _content_table[ci].file.name, 8);
             nft32_str_strncpy(info->extention, _content_table[ci].file.extension, 3);
