@@ -661,6 +661,8 @@ int NIFAT32_copy_content(const ci_t src, const ci_t dst, char deep) {
                 FS_API_RETURN(0);
             }
 
+            nft32_str_memcpy(source.file_name, destination.file_name, sizeof(source.file_name));
+            source.name_hash = destination.name_hash;
             source.rca = get_content_root_ca(dst);
             source.checksum = 0;
             source.checksum = nft32_murmur3_x86_32((const_buffer_t)&source, sizeof(directory_entry_t), 0);
