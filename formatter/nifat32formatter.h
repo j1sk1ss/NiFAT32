@@ -146,7 +146,8 @@ typedef struct {
     unsigned char  file_name[11];
     unsigned int   name_hash;
     unsigned char  attributes;
-    unsigned int   cluster;
+    unsigned int   rca;      // root cluster
+    unsigned int   dca;      // data cluster
     unsigned int   file_size;
     unsigned int   checksum;
 } __attribute__((packed)) directory_entry_t;

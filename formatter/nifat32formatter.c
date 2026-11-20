@@ -420,7 +420,8 @@ static int _copy_files_to_fs(
             _to_83_name(entry->d_name, (char*)root_dir[entry_count].file_name);
             root_dir[entry_count].name_hash  = _nft32_murmur3_x86_32(root_dir[entry_count].file_name, sizeof(root_dir[entry_count].file_name), 0);
             root_dir[entry_count].attributes = 0x10;
-            root_dir[entry_count].cluster    = start_cluster;
+            root_dir[entry_count].rca        = ROOT_DIR_CLUSTER;
+            root_dir[entry_count].dca        = start_cluster;
             root_dir[entry_count].file_size  = 0;
             root_dir[entry_count].checksum   = _nft32_murmur3_x86_32((uint8_t*)&root_dir[entry_count], sizeof(root_dir[entry_count]), 0);
             fprintf(stdout, "%s checksum: %u\n", entry->d_name, root_dir[entry_count].checksum);
@@ -445,7 +446,8 @@ static int _copy_files_to_fs(
             _to_83_name(entry->d_name, (char*)root_dir[entry_count].file_name);
             root_dir[entry_count].name_hash  = _nft32_murmur3_x86_32(root_dir[entry_count].file_name, strlen((char*)root_dir[entry_count].file_name), 0);
             root_dir[entry_count].attributes = 0x20;
-            root_dir[entry_count].cluster    = start_cluster;
+            root_dir[entry_count].rca        = ROOT_DIR_CLUSTER;
+            root_dir[entry_count].dca        = start_cluster;
             root_dir[entry_count].file_size  = file_size;
             root_dir[entry_count].checksum   = 0;
             root_dir[entry_count].checksum   = _nft32_murmur3_x86_32((uint8_t*)&root_dir[entry_count], sizeof(root_dir[entry_count]), 0);
@@ -457,7 +459,8 @@ static int _copy_files_to_fs(
     root_dir[entry_count].file_name[0] = ENTRY_END;
     root_dir[entry_count].name_hash  = _nft32_murmur3_x86_32((uint8_t*)root_dir[entry_count].file_name, sizeof(root_dir[entry_count].file_name), 0);
     root_dir[entry_count].attributes = 0;
-    root_dir[entry_count].cluster    = 0;
+    root_dir[entry_count].rca        = ROOT_DIR_CLUSTER;
+    root_dir[entry_count].dca        = 0;
     root_dir[entry_count].file_size  = 0;
     root_dir[entry_count].checksum   = 0;
     root_dir[entry_count].checksum   = _nft32_murmur3_x86_32((uint8_t*)&root_dir[entry_count], sizeof(root_dir[entry_count]), 0);
@@ -495,7 +498,8 @@ static int _create_directory(
             _to_83_name(".", (char*)entries[0].file_name);
             entries[0].name_hash  = _nft32_murmur3_x86_32(entries[0].file_name, sizeof(entries[0].file_name), 0);
             entries[0].attributes = 0x10;
-            entries[0].cluster    = i;
+            entries[0].rca        = i;
+            entries[0].dca        = i;
             entries[0].checksum   = 0;
             entries[0].checksum   = _nft32_murmur3_x86_32((uint8_t*)&entries[0], sizeof(entries[0]), 0);
             fprintf(stdout, ". checksum: %u\n", entries[0].checksum);
@@ -503,7 +507,8 @@ static int _create_directory(
             _to_83_name("..", (char*)entries[1].file_name);
             entries[1].name_hash  = _nft32_murmur3_x86_32(entries[1].file_name, sizeof(entries[1].file_name), 0);
             entries[1].attributes = 0x10;
-            entries[1].cluster    = 0;
+            entries[1].rca        = i;
+            entries[1].dca        = 0;
             entries[1].checksum   = 0;
             entries[1].checksum   = _nft32_murmur3_x86_32((uint8_t*)&entries[1], sizeof(entries[1]), 0);
             fprintf(stdout, ".. checksum: %u\n", entries[1].checksum);
@@ -511,7 +516,8 @@ static int _create_directory(
             entries[2].file_name[0] = ENTRY_END;
             entries[2].name_hash  = _nft32_murmur3_x86_32(entries[2].file_name, sizeof(entries[2].file_name), 0);
             entries[2].attributes = 0x10;
-            entries[2].cluster    = 0;
+            entries[2].rca        = i;
+            entries[2].dca        = 0;
             entries[2].checksum   = 0;
             entries[2].checksum   = _nft32_murmur3_x86_32((uint8_t*)&entries[2], sizeof(entries[2]), 0);
             fprintf(stdout, "END checksum: %u\n", entries[1].checksum);
