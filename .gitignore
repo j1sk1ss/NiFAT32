@@ -10,3 +10,21 @@ test/efficiency/target/
 test/efficiency/Cargo.lock
 *.dSYM
 .svace-dir
+
+# Logs
+*.log
+
+# Build artifacts
+formatter/formatter
+test/test_nifat32_*
+!test/test_nifat32_*.c
+!test/test_nifat32_*.py
+
+# Test work and results directories
+itests/work
+itests/results
+bench/work
+bench/results
+robust/work
+robust/results
+collected_results
