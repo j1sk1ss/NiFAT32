@@ -1,0 +1,4 @@
+# SEU basic: a few random single-bit flips per run
+@strategy random
+@bitflips 5
+@runs 5

@@ -1,0 +1,4 @@
+# SEU stress: more random single-bit flips per run
+@strategy random
+@bitflips 50
+@runs 5

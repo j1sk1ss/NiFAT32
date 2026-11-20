@@ -1,0 +1,10 @@
+# SEU campaign: create -> verify, inject single-bit flips, verify again.
+# bitflips_1 periodically repairs the filesystem during the read loop.
+@campaign-runs 3
+T 100
+I 10
+T 100
+C
+T 100
+I 20
+T 100

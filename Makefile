@@ -127,7 +127,7 @@ endif
 .DEFAULT_GOAL := all
 
 .PHONY: all shared static unix unit-tests formatter tools clean distclean help FORCE \
-        unit integration bench
+        unit integration bench robust robust-full test test-all
 
 all: shared
 
@@ -143,6 +143,10 @@ unit-tests: $(UNIT_TEST_EXECUTABLE)
 #   unit        - unit tests: C tests of tools + single filesystem runs (in-memory image)
 #   integration - integration tests: unix_nifat32 driven by declarative scenarios
 #   bench       - benchmarks: C benchmark scenarios with parameter sweeps
+#   robust      - robustness smoke: SEU/MEU setup->inject->test loops
+#   robust-full - robustness smoke + scenario campaigns with repair under SEU/MEU
+#   test        - unit + integration
+#   test-all    - unit + integration + bench + robust-full
 unit: unit-tests
 	@$(MKDIR_P) $(dir $(UT_IMAGE))
 	$(MAKE) -C formatter
@@ -155,6 +159,16 @@ integration: tools
 
 bench: tools
 	python3 bench/run_bench.py --root . $(BENCH_ARGS)
+
+robust: tools
+	python3 robust/run_robust.py --root . $(ROBUST_ARGS)
+
+robust-full: tools
+	python3 robust/run_robust.py --root . --full $(ROBUST_ARGS)
+
+test: unit integration
+
+test-all: test bench robust-full
 
 formatter:
 	$(MAKE) -C formatter
@@ -205,6 +219,10 @@ help:
 	  '  unit         Build + format image + run unit tests (tools + single FS runs)' \
 	  '  integration  Run integration scenarios (itests/, unix_nifat32)' \
 	  '  bench        Run benchmark scenarios (bench/, results in bench/results/)' \
+	  '  robust       Run SEU/MEU robustness smoke loops (robust/)' \
+	  '  robust-full  Robustness smoke + scenario campaigns with repair' \
+	  '  test         unit + integration' \
+	  '  test-all     unit + integration + bench + robust-full' \
 	  '  formatter    Build formatter/formatter' \
 	  '  tools        Build the formatter and Unix utility' \
 	  '  clean        Remove root build artifacts' \
@@ -215,6 +233,7 @@ help:
 	  '  make static NIFAT32_RO=1 NO_HEAP=1' \
 	  '  make unix LOGGING_LOGS=1' \
 	  '  make bench BENCH_ARGS="--scenario cold_boot"' \
+	  '  make robust ROBUST_ARGS="--scenario seu_basic"' \
 	  '  make integration INTEG_ARGS="--scenario basic_crud"'
 
 -include $(DEPENDENCIES)

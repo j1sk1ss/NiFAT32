@@ -1,0 +1,6 @@
+# MEU wide scratch: longer multi-track scratch per run
+@strategy scratch
+@bitflips 128
+@scratch-width 16
+@scratch-intensity 0.7
+@runs 5

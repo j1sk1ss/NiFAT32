@@ -1,0 +1,13 @@
+# MEU campaign: create -> verify, inject scratches and single-bit flips,
+# verify again. Repair runs periodically inside the bitflips_1 loop.
+@campaign-runs 3
+@scratch-width 8
+@scratch-intensity 0.7
+T 100
+S 64
+T 100
+C
+T 100
+I 5
+S 32
+T 100
