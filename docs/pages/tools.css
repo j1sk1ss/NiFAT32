@@ -1,0 +1,350 @@
+/* Shared with the standalone builder and walkthroughs. */
+:root {
+  color-scheme:dark;
+  --bg:#100e0d;
+  --panel:#191512;
+  --panel2:#241b14;
+  --line:#453125;
+  --text:#f4dcc0;
+  --muted:#b7a799;
+  --accent:#ed6942;
+  --good:#a4c69c;
+  --bad:#ff795d;
+  --warn:#e5bb75;
+  --fat:#ed6942;
+  --bs:#a4c69c;
+  --journal:#8ea9b7;
+  --error:#c19cb9;
+  --root:#ca9c60;
+  --data:#3c3025
+}
+body {
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  font-size:16px;
+  line-height:1.6;
+  color:var(--text);
+  background:var(--bg);
+  padding-bottom:20px
+}
+button,input,select {
+  font:inherit
+}
+button,select {
+  cursor:pointer
+}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,[tabindex]:focus-visible {
+  outline:2px solid #ff9a72;
+  outline-offset:3px
+}
+header {
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--line);
+  gap:20px
+}
+header h1 {
+  font-size:20px;
+  letter-spacing:-.035em;
+  font-weight:600
+}
+header h1 span {
+  color:var(--accent)
+}
+main {
+  grid-template-columns:300px minmax(0,1fr);
+  gap:18px;
+  padding:20px 24px
+}
+main>div {
+  min-width:0
+}
+main>div:first-child>.panel+.panel {
+  margin-top:16px
+}
+.panel,.card {
+  border-radius:5px
+}
+.panel {
+  padding:18px
+}
+.panel h2,.panel h3 {
+  font-size:12px;
+  letter-spacing:.09em;
+  font-weight:500;
+  color:#c8aa8b
+}
+.ctl label {
+  font-size:14px
+}
+.ctl label b {
+  font-weight:500
+}
+.ctl input[type=number] {
+  max-width:100%;
+  padding:7px 9px
+}
+.ctl select {
+  width:100%;
+  min-width:54px
+}
+.row {
+  gap:12px
+}
+.row .ctl {
+  min-width:72px
+}
+.note,.regions div,.legend,.vlist div,.statline,.card,.panel {
+  font-size:14px
+}
+.card .name {
+  font-size:16px
+}
+.card {
+  padding:12px
+}
+.note {
+  line-height:1.7
+}
+select,input[type=number] {
+  background:var(--panel2);
+  color:var(--text);
+  border-color:var(--line);
+  border-radius:4px;
+  font-size:14px;
+  padding:8px 10px
+}
+select {
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23d5b590' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-position:right 9px center;
+  background-repeat:no-repeat;
+  padding-right:30px
+}
+input[type=checkbox],input[type=range] {
+  accent-color:var(--accent)
+}
+.ctl input[type=range] {
+  min-height:24px
+}
+.bar em {
+  color:#170f0b
+}
+.statline {
+  gap:15px;
+  align-items:start;
+  line-height:1.65
+}
+.statline b {
+  text-align:right;
+  font-size:12px;
+  overflow-wrap:anywhere
+}
+.legend {
+  gap:8px 16px
+}
+.dot {
+  border-radius:2px
+}
+canvas {
+  background:#140f0c;
+  border-radius:4px
+}
+.bottom {
+  padding:0 24px;
+  gap:18px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))
+}
+.table-wrap {
+  width:100%;
+  overflow:auto
+}
+table {
+  font-size:13px
+}
+th {
+  font-size:11px
+}
+th,td {
+  padding:9px 8px
+}
+.vlist div {
+  padding-block:8px
+}
+#tip {
+  background:#21170f;
+  color:var(--text);
+  font-size:12px;
+  box-shadow:0 6px 22px #0007;
+  max-width:min(320px,90vw)
+}
+.tabs {
+  gap:7px
+}
+.tabs button {
+  padding:10px 16px;
+  border-radius:4px 4px 0 0;
+  font-size:14px
+}
+.tabs button:hover {
+  color:var(--text);
+  border-color:#9e6849
+}
+.tabs button.on {
+  color:var(--accent);
+  border-top:2px solid var(--accent);
+  padding-top:9px;
+  font-weight:500
+}
+.scene {
+  margin:20px 24px 0;
+  padding:18px;
+  border-radius:5px;
+  background:#16110e
+}
+.stage {
+  border-bottom:1px solid var(--line);
+  padding-bottom:18px
+}
+.stage svg {
+  min-width:850px;
+  max-width:100%;
+  height:auto
+}
+.controls button,.subbtns button {
+  font-size:14px;
+  padding:8px 13px;
+  border-radius:4px
+}
+.controls button:hover,.subbtns button:hover {
+  color:var(--accent)
+}
+.controls button:disabled {
+  opacity:.35;
+  cursor:default
+}
+.controls .stepno {
+  font-size:12px
+}
+.caption {
+  font-size:14px;
+  line-height:1.8;
+  padding:14px;
+  border-radius:4px;
+  margin-top:18px
+}
+.side .panel {
+  font-size:14px
+}
+.side {
+  grid-template-columns:repeat(2,minmax(0,1fr))
+}
+.side .panel {
+  min-width:0;
+  overflow:auto
+}
+.panel td {
+  font-size:12px;
+  padding:7px 6px
+}
+.standalone-back {
+  display:inline-block;
+  margin:16px 24px 0;
+  color:#d9b890;
+  text-decoration:none;
+  font:13px/1.6 ui-monospace,monospace
+}
+.standalone-back:hover {
+  color:var(--accent)
+}
+@media(max-width:1100px) {
+  main {
+    grid-template-columns:1fr
+  }
+  .side {
+    grid-template-columns:1fr
+  }
+  header {
+    align-items:flex-start
+  }
+  .row .ctl {
+    flex:1
+  }
+}
+@media(max-width:600px) {
+  header {
+    padding:16px;
+    gap:12px
+  }
+  header>.ctl {
+    min-width:0!important;
+    width:100%
+  }
+  header h1 {
+    font-size:18px
+  }
+  .tabs {
+    gap:5px
+  }
+  .tabs button {
+    font-size:12px;
+    padding:9px 10px
+  }
+  .tabs button.on {
+    padding-top:8px
+  }
+  main {
+    padding:14px;
+    gap:14px
+  }
+  .panel {
+    padding:14px
+  }
+  .bottom {
+    padding-inline:14px
+  }
+  .row .ctl {
+    min-width:72px
+  }
+  .scene {
+    margin:14px;
+    padding:12px
+  }
+  .side {
+    gap:12px
+  }
+  .controls {
+    gap:7px
+  }
+  .controls button,.subbtns button {
+    font-size:12px;
+    padding:8px 10px
+  }
+  .caption {
+    padding:12px;
+    font-size:13px
+  }
+  .controls .stepno {
+    width:100%;
+    font-size:11px
+  }
+  .statline {
+    font-size:12px
+  }
+  .statline b {
+    font-size:11px
+  }
+  .legend {
+    font-size:12px
+  }
+  .standalone-back {
+    margin-left:16px
+  }
+  .panel table {
+    min-width:350px
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*:before,*:after {
+    animation:none!important;
+    transition:none!important
+  }
+}

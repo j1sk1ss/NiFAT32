@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100e0d">
+  <meta name="description" content="NiFAT32: an upset-tolerant filesystem for embedded systems. Explore the architecture, simulate bit flips, and configure your volume.">
+  <title>NiFAT32 — Resilience at speed</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="content.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="motion.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#/" aria-label="NiFAT32 home"><img src="assets/logo.svg" width="38" height="38" alt=""><span>NiFAT<span class="accent">32</span></span></a>
+    <button class="menu-toggle icon-button" aria-label="Open navigation" aria-expanded="false" aria-controls="main-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+      <a href="#/" data-nav="home">Overview</a><a href="#/docs/getting-started" data-nav="docs">Documentation</a><a href="#/animations" data-nav="animations">How it works</a><a href="#/builder" data-nav="builder">Filesystem builder</a>
+    </nav>
+    <div class="header-actions">
+      <button class="search-trigger icon-button" aria-label="Search documentation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span class="search-label">Search <kbd>/</kbd></span></button>
+      <a class="github-link" href="https://github.com/j1sk1ss/NIFAT32" target="_blank" rel="noopener noreferrer" aria-label="NiFAT32 on GitHub (opens in a new tab)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4 1-4-2-6-2m12 5v-3.9a3.4 3.4 0 0 0-1-2.6c3.3-.4 6.7-1.6 6.7-7.4a5.8 5.8 0 0 0-1.6-4 5.4 5.4 0 0 0-.2-4S17.6.7 15 2.6a14 14 0 0 0-7 0C5.4.7 4.1 1.1 4.1 1.1a5.4 5.4 0 0 0-.2 4 5.8 5.8 0 0 0-1.6 4c0 5.8 3.4 7 6.7 7.4a3.4 3.4 0 0 0-1 2.6V23" transform="translate(1 0) scale(.9)"/></svg><span>GitHub</span></a>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    <div id="home-page">
+      <section class="hero page-width" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="small-cross">+</span> EMBEDDED STORAGE. EXTRA RESILIENCE.</p>
+          <h1 id="hero-title">Built for the<br><em>unexpected.</em></h1>
+          <p class="hero-description">A fault-tolerant filesystem for embedded systems.</p>
+          <!-- performance:hero:start -->
+<div class="hero-performance" aria-label="Throughput and fault tolerance compared with LittleFS">
+      <p class="hero-benchmark-label">FASTER THAN LITTLEFS</p><dl class="hero-speed-metrics"><div><dt>Read</dt><dd>3.26<small>×</small></dd></div><div><dt>Write</dt><dd>5.96<small>×</small></dd></div><div><dt>Rename</dt><dd>10.43<small>×</small></dd></div></dl>
+      <div class="hero-resilience"><span class="resilience-mark" aria-hidden="true">≈</span><div><strong>Near LittleFS + RS resilience</strong>
+        <p><b>14</b> vs <b>13</b> failed runs <span>· 100 MB / 10M bit flips</span></p></div></div>
+      <p class="hero-benchmark-config">5–5–5 copies · caches &amp; indexing off</p></div>
+<!-- performance:hero:end -->
+          <div class="hero-buttons"><a class="button primary" href="#/docs/getting-started">Get started</a><a class="button secondary" href="#/animations"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7z"/></svg>See how it works</a></div>
+          <div class="hero-meta"><span>Written in C</span><span>MIT licensed</span><span>Made for embedded</span></div>
+        </div>
+        <div class="hero-visual">
+          <div class="visual-label"><span>NiFAT32 / SYSTEM EXPLORER</span><span>SECTOR 0x0020</span></div>
+          <!-- hero-art:start -->
+<svg xmlns="http://www.w3.org/2000/svg" id="hero-mars-scene" class="mars-scene" viewBox="0 0 640 600" width="640" height="600" fill="none" role="img" aria-labelledby="mars-scene-title">
+  <title id="mars-scene-title">A rover driving over scrolling Martian terrain inside a microchip, with an orbiting satellite</title>
+  <defs>
+    <radialGradient id="halo"><stop stop-color="#9f3a20" stop-opacity=".22"/><stop offset="1" stop-color="#9f3a20" stop-opacity="0"/></radialGradient>
+    <linearGradient id="planet" x1="220" y1="130" x2="430" y2="470" gradientUnits="userSpaceOnUse"><stop stop-color="#ef693d"/><stop offset=".5" stop-color="#b53b24"/><stop offset="1" stop-color="#421e17"/></linearGradient>
+    <linearGradient id="chip" x1="160" y1="160" x2="510" y2="480" gradientUnits="userSpaceOnUse"><stop stop-color="#f7d7a4"/><stop offset="1" stop-color="#b58b5b"/></linearGradient>
+    <linearGradient id="orbit" x1="40" y1="400" x2="580" y2="160" gradientUnits="userSpaceOnUse"><stop stop-color="#ec6036" stop-opacity="0"/><stop offset=".5" stop-color="#f57845"/><stop offset="1" stop-color="#f3cf9a"/></linearGradient>
+    <clipPath id="disc"><circle cx="321" cy="310" r="164"/></clipPath>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0v40" stroke="#d7ac7a" stroke-opacity=".055"/></pattern>
+    <g id="orbit-satellite"><g fill="#f5d4a2"><rect x="-15" y="-27" width="30" height="48" rx="7"/><path d="M-72-20h50v33h-50zM22-20h50v33H22z"/><path d="M-22-7h7v7h-7zm37 0h7v7h-7z"/></g><g stroke="#38241b" stroke-width="2"><path d="M-55-20v33m17-33v33m-34-17h50m61-16v33m17-33v33M22-4h50"/></g><g class="scene-radio" stroke="#eaaa69" stroke-width="4"><path d="M-8 30q8 7 16 0m-25 9q17 15 34 0m-44 10q27 22 54 0"/></g></g>
+    <g id="terrain-far-tile"><path d="M0 336 36 310 74 326 114 282 155 306 182 292 222 325 260 303 303 330 342 307 400 336V500H0Z" fill="#852d20"/></g>
+    <g id="terrain-mid-tile"><path d="M0 377 35 357 72 365 112 343 154 364 188 349 231 374 270 350 306 365 354 351 400 377V500H0Z" fill="#5c241a"/></g>
+    <g id="terrain-near-tile"><path d="M0 407 44 390 79 399 120 379 167 402 205 388 248 409 295 385 344 399 374 392 400 407V500H0Z" fill="#381b16"/></g>
+    <g id="terrain-ground-tile"><path d="M0 428H400V500H0Z" fill="#d8532d"/><path d="m12 442 45-7 25 6-38 5zm91 24 54-13 29 7-52 15zm107-30 29-5 24 6-39 5zm93 21 31-12 45 7-26 9z" fill="#a53621"/><path d="m66 475 43-12 36 7-19 11zm170-22 26-9 30 5-12 12zM0 492h46l-22-10-24 4z" fill="#ee7441"/><path d="m172 439 9-4 14 5-12 3zm172 34 16-8 21 10-14 4z" fill="#ef8a4d"/></g>
+  </defs>
+  <rect width="640" height="600" fill="url(#grid)"/>
+  <ellipse class="scene-halo" cx="330" cy="315" rx="310" ry="280" fill="url(#halo)"/>
+  <g stroke="#e4c194" stroke-opacity=".14"><circle class="scene-radar" cx="321" cy="310" r="237" stroke-dasharray="3 9"/><path d="M321 35v530M46 310h550" stroke-dasharray="3 8"/><path d="M65 65h20m-10-10v20m480 450h20m-10-10v20M55 535h20m-10-10v20m480-460h20m-10-10v20"/></g>
+  <ellipse cx="319" cy="314" rx="294" ry="120" transform="rotate(-32 319 314)" stroke="#8f442b" stroke-opacity=".28"/>
+  <path d="M70 428C-3 393 55 288 196 194S516 87 567 128" stroke="url(#orbit)" stroke-width="2"/>
+  <g id="satellite-back" transform="translate(505 112) rotate(26)"><use href="#orbit-satellite"/></g>
+  <g stroke="url(#chip)" stroke-width="13" stroke-linecap="round"><path d="M239 104v32m55-32v32m55-32v32m55-32v32M239 483v32m55-32v32m55-32v32m55-32v32M115 227h32m-32 55h32m-32 55h32m-32 55h32M495 227h32m-32 55h32m-32 55h32m-32 55h32"/><rect x="147" y="136" width="348" height="347" rx="64" fill="#140f0d" stroke-width="9"/></g>
+  <circle cx="321" cy="310" r="164" fill="url(#planet)"/>
+  <g clip-path="url(#disc)">
+    <path d="M166 268c43-85 113-117 185-107-95-40-170 13-192 63z" fill="#ff9153" fill-opacity=".33"/>
+    <ellipse cx="251" cy="218" rx="29" ry="12" transform="rotate(-27 251 218)" fill="#9c3322" fill-opacity=".55"/><ellipse cx="364" cy="197" rx="45" ry="13" transform="rotate(19 364 197)" fill="#8e2c1e" fill-opacity=".55"/><ellipse cx="300" cy="180" rx="13" ry="5" fill="#a53924"/><ellipse cx="400" cy="248" rx="17" ry="7" transform="rotate(33 400 248)" fill="#77291d" fill-opacity=".5"/>
+    <g class="scene-terrain terrain-far"><use href="#terrain-far-tile" x="-400"/><use href="#terrain-far-tile" x="0"/><use href="#terrain-far-tile" x="400"/><use href="#terrain-far-tile" x="800"/></g>
+    <g class="scene-terrain terrain-mid"><use href="#terrain-mid-tile" x="-400"/><use href="#terrain-mid-tile" x="0"/><use href="#terrain-mid-tile" x="400"/><use href="#terrain-mid-tile" x="800"/></g>
+    <g class="scene-terrain terrain-near"><use href="#terrain-near-tile" x="-400"/><use href="#terrain-near-tile" x="0"/><use href="#terrain-near-tile" x="400"/><use href="#terrain-near-tile" x="800"/></g>
+    <g class="scene-terrain terrain-ground"><use href="#terrain-ground-tile" x="-400"/><use href="#terrain-ground-tile" x="0"/><use href="#terrain-ground-tile" x="400"/><use href="#terrain-ground-tile" x="800"/></g>
+  </g>
+  <g stroke="#f5d4a2" stroke-width="2" stroke-opacity=".75"><path d="m185 334 57-66 122-43 73 108-195-65"/><path d="m364 225 73 108"/></g><g class="scene-nodes" fill="#f5d4a2"><circle cx="185" cy="334" r="7"/><circle cx="242" cy="268" r="8"/><circle cx="364" cy="225" r="8"/><circle cx="437" cy="333" r="7"/></g>
+  <g class="scene-telemetry" stroke="#ffe6bb" stroke-width="2.5" stroke-dasharray="5 42" stroke-linecap="round"><path d="m185 334 57-66 122-43 73 108-195-65"/><path d="m364 225 73 108"/></g>
+  <g transform="translate(246 339)"><g class="scene-rover"><path d="m28 65 45-1 17 10H12z" fill="#c19a65"/><path d="M15 61c0-12 8-19 19-19h45c11 0 18 8 18 19v8H15z" fill="#f5d4a2"/><path d="M69 42V12" stroke="#f5d4a2" stroke-width="6"/><rect x="55" y="0" width="29" height="17" rx="4" fill="#f5d4a2"/><circle cx="64" cy="8" r="3.5" fill="#19120e"/><circle cx="76" cy="8" r="3.5" fill="#19120e"/><path d="M29 42V24" stroke="#f5d4a2" stroke-width="3"/><circle cx="29" cy="23" r="4" fill="#f5d4a2"/><g fill="#f5d4a2" stroke="#301c14" stroke-width="3"><circle cx="20" cy="76" r="13"/><circle cx="56" cy="76" r="13"/><circle cx="92" cy="76" r="13"/></g><g fill="#302016"><circle cx="20" cy="76" r="6"/><circle cx="56" cy="76" r="6"/><circle cx="92" cy="76" r="6"/></g><g transform="translate(20 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g><g transform="translate(56 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g><g transform="translate(92 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g></g></g>
+  <path d="M567 128c71 32-11 148-163 244S74 481 51 438" stroke="url(#orbit)" stroke-width="2.5"/>
+  <g id="satellite-front" transform="translate(505 112) rotate(26)" visibility="hidden"><use href="#orbit-satellite"/></g>
+  <g font-family="monospace" font-size="10" letter-spacing="1" fill="#b09980"><path d="M128 433H79v38" fill="none" stroke="#8c6d50" stroke-opacity=".5"/><text x="33" y="488">SCATTERED COPIES</text><path d="M478 361h65v34" fill="none" stroke="#8c6d50" stroke-opacity=".5"/><text x="487" y="413">RECOVER &amp; REPAIR</text><text x="281" y="561" fill="#69584b">512 BYTES / SECTOR</text></g>
+</svg>
+          <!-- hero-art:end -->
+          <div class="visual-caption"><span class="crosshair">+</span><span>Redundancy. Recovery. Resilience.</span><span class="signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
+        </div>
+      </section>
+      <div class="spec-strip"><div class="page-width spec-inner"><span class="spec-heading">A SMALL FOOTPRINT.<br>A STRONGER FOUNDATION.</span><a href="#/docs/footprint"><strong>6,767 <small>B</small></strong><span>minimum ROM · read-only</span></a><a href="#/docs/footprint"><strong>856 <small>B</small></strong><span>minimum static RAM · read-only</span></a><a href="#/docs/architecture"><strong>512 <small>B</small></strong><span>sector size</span></a><a href="#/docs/architecture"><strong>Hamming <small>(15,11)</small></strong><span>single-bit correction</span></a></div></div>
+      <section class="performance-section page-width" aria-labelledby="performance-title">
+        <div class="performance-heading"><div><p class="eyebrow">THROUGHPUT</p><h2 id="performance-title">Filesystem performance.</h2></div><a class="text-link" href="#/docs/benchmarks">All operations &amp; comparisons →</a></div>
+        <p class="performance-context">5–5–5 copies · no caches or indexing. Select a filesystem to compare all six operations.</p>
+        <!-- performance:plots:start -->
+<div class="comparison-chart"><div class="comparison-chart-top"><div><p class="eyebrow">RELATIVE THROUGHPUT</p>
+      <h3>Throughput by operation</h3></div><label>Compare with<select data-throughput-comparison><option>LittleFS</option><option>FAT32</option><option>YAFFS2</option></select></label></div><div class="comparison-panel" data-comparison="LittleFS" style="--baseline:8.33333%">
+          <p class="comparison-baseline">LittleFS = 1× <span>· higher is faster</span></p>
+          <div class="throughput-axis"><span>0</span><span>6×</span><span>12×</span></div>
+          <div class="throughput-rows"><div class="throughput-row"><div class="throughput-label"><span>Open</span><strong>3.48×</strong></div>
+          <div class="throughput-track"><span style="width:29.02589%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Create</span><strong>5.52×</strong></div>
+          <div class="throughput-track"><span style="width:46.04052%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Write</span><strong>5.96×</strong></div>
+          <div class="throughput-track"><span style="width:49.69191%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Read</span><strong>3.26×</strong></div>
+          <div class="throughput-track"><span style="width:27.14441%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Rename</span><strong>10.4×</strong></div>
+          <div class="throughput-track"><span style="width:86.87795%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Copy</span><strong>4.87×</strong></div>
+          <div class="throughput-track"><span style="width:40.55150%"></span></div></div></div></div><div class="comparison-panel" data-comparison="FAT32" hidden style="--baseline:100.00000%">
+          <p class="comparison-baseline">FAT32 = 1× <span>· higher is faster</span></p>
+          <div class="throughput-axis"><span>0</span><span>0.5×</span><span>1×</span></div>
+          <div class="throughput-rows"><div class="throughput-row"><div class="throughput-label"><span>Open</span><strong>0.0617×</strong></div>
+          <div class="throughput-track"><span style="width:6.17284%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Create</span><strong>0.231×</strong></div>
+          <div class="throughput-track"><span style="width:23.10536%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Write</span><strong>0.14×</strong></div>
+          <div class="throughput-track"><span style="width:13.98210%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Read</span><strong>0.132×</strong></div>
+          <div class="throughput-track"><span style="width:13.23276%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Rename</span><strong>0.286×</strong></div>
+          <div class="throughput-track"><span style="width:28.55511%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Copy</span><strong>0.247×</strong></div>
+          <div class="throughput-track"><span style="width:24.65483%"></span></div></div></div></div><div class="comparison-panel" data-comparison="YAFFS2" hidden style="--baseline:40.00000%">
+          <p class="comparison-baseline">YAFFS2 = 1× <span>· higher is faster</span></p>
+          <div class="throughput-axis"><span>0</span><span>1.25×</span><span>2.5×</span></div>
+          <div class="throughput-rows"><div class="throughput-row"><div class="throughput-label"><span>Open</span><strong>0.00829×</strong></div>
+          <div class="throughput-track"><span style="width:0.33140%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Create</span><strong>0.83×</strong></div>
+          <div class="throughput-track"><span style="width:33.19502%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Write</span><strong>2.16×</strong></div>
+          <div class="throughput-track"><span style="width:86.59883%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Read</span><strong>0.28×</strong></div>
+          <div class="throughput-track"><span style="width:11.19507%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Rename</span><strong>0.747×</strong></div>
+          <div class="throughput-track"><span style="width:29.87304%"></span></div></div><div class="throughput-row"><div class="throughput-label"><span>Copy</span><strong>0.564×</strong></div>
+          <div class="throughput-track"><span style="width:22.56063%"></span></div></div></div></div></div>
+<!-- performance:plots:end -->
+      </section>
+      <section class="protection-section page-width" aria-labelledby="protection-title">
+        <div class="section-heading"><div><p class="eyebrow">DEFENSE IN DEPTH</p><h2 id="protection-title">One upset.<br>Multiple lines of defense.</h2></div><p>A flipped bit shouldn't end the story.<br>NiFAT32 combines independent protection layers to keep filesystem metadata recoverable.</p></div>
+        <div class="protection-grid">
+          <article class="protection-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 10h10v10H8zm22 0h10v10H30zM8 30h10v10H8zm22 0h10v10H30zM18 15h12M18 35h12M13 20v10m22-10v10"/><circle cx="24" cy="25" r="3"/></svg><h3>Spread the risk.</h3><p>Metadata copies are scattered across the volume. A localized scratch is less likely to hit them all.</p><a class="text-link" href="#/docs/architecture?id=on-disk-layout">Explore the layout</a></article>
+          <article class="protection-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m24 5 15 6v12c0 10-15 19-15 19S9 33 9 23V11z"/><path d="m17 23 5 5 10-11"/></svg><h3>Catch the bit flip.</h3><p>Hamming encoding corrects single-bit errors. Checksums help identify untrusted metadata copies.</p><a class="text-link" href="#/docs/architecture?id=protection-layers">Meet the protection layers</a></article>
+          <article class="protection-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 18a16 16 0 0 1 28-4l3 4M38 30a16 16 0 0 1-28 4l-3-4M41 7v11H30M7 41V30h11"/><path d="m18 24 4 4 9-9"/></svg><h3>Vote. Repair. Continue.</h3><p>Redundant FAT and journal copies vote on reads. Disagreeing values are repaired from the winning copy.</p><a class="text-link" href="#/animations">Watch recovery happen</a></article>
+        </div>
+      </section>
+      <section class="lab-section" aria-labelledby="lab-title"><div class="page-width lab-grid">
+        <div class="lab-copy"><p class="eyebrow">BREAK A BIT. KEEP THE DATA.</p><h2 id="lab-title">Resilience you<br>can explore.</h2><p>Here's a simplified five-copy vote. Corrupt one copy, then let the other four recover the original value.</p><div class="lab-actions"><button class="button secondary" id="fault-button">Inject a bit flip</button><button class="text-button" id="repair-button" disabled>Run majority repair</button></div><p class="lab-footnote">Try Hamming decoding, journal replay, and larger upsets in the <a href="#/animations">interactive walkthroughs</a>.</p></div>
+        <div class="vote-demo"><div class="panel-topline"><span>FAT ENTRY / CLUSTER 5</span><span>5 COPIES</span></div><div id="copy-rows"></div><div class="vote-status" id="vote-status" role="status">All copies agree. Original value: 0x0000000A.</div></div>
+      </div></section>
+      <section class="research-section page-width" aria-labelledby="research-title">
+        <div class="section-heading"><div><p class="eyebrow">METADATA PROTECTION</p><h2 id="research-title">Keep metadata<br>within reach.</h2></div><p>Spaced copies. Software correction. Majority repair.</p></div>
+        <div class="research-grid">
+          <div class="research-story">
+            <article><span class="research-number">01 / RESILIENCE</span><h3>Keep metadata reachable.</h3><p>Recover damaged metadata from redundant copies.</p></article>
+            <article><span class="research-number">02 / SOFTWARE PROTECTION</span><h3>Correction at the filesystem layer.</h3><p>Hamming coding corrects single-bit metadata errors in software.</p></article>
+            <article><span class="research-number">03 / LOCALIZED ERRORS</span><h3>Spread the copies.</h3><p>Separate critical copies to reduce their exposure to one local event.</p></article>
+            <a class="text-link" href="#/docs/benchmarks">Compare filesystems</a>
+          </div>
+          <div><!-- research:chart:start -->
+<div class="research-chart"><div class="research-chart-top"><div><span class="eyebrow">BIT-FLIP INJECTION</span><h3>Failed runs</h3></div><label>Image size <select data-fault-volume><option value="100">100 MB</option><option value="200">200 MB</option><option value="300">300 MB</option><option value="400">400 MB</option><option value="500">500 MB</option></select></label></div><figure data-volume="100">
+          <div class="research-plot-scroll" tabindex="0" role="region" aria-label="Scrollable fault injection chart">
+            <img src="assets/charts/faults-100.svg" width="800" height="420" loading="lazy" alt="Failed runs versus one to ten million injected bit flips, 100 MB image. At ten million flips: FAT32: 99, NiFAT32: 14, LittleFS + RS: 13. Lower counts are better."></div>
+          <figcaption><span>At 10 million injected flips</span><div class="fault-counts"><div style="--series:#b7a799"><strong>99</strong><span>FAT32</span></div><div style="--series:#ed6942"><strong>14</strong><span>NiFAT32</span></div><div style="--series:#a4c69c"><strong>13</strong><span>LittleFS + RS</span></div></div></figcaption></figure><figure data-volume="200" hidden>
+          <div class="research-plot-scroll" tabindex="0" role="region" aria-label="Scrollable fault injection chart">
+            <img src="assets/charts/faults-200.svg" width="800" height="420" loading="lazy" alt="Failed runs versus one to ten million injected bit flips, 200 MB image. At ten million flips: FAT32: 85, NiFAT32: 0, LittleFS + RS: 0. Lower counts are better."></div>
+          <figcaption><span>At 10 million injected flips</span><div class="fault-counts"><div style="--series:#b7a799"><strong>85</strong><span>FAT32</span></div><div style="--series:#ed6942"><strong>0</strong><span>NiFAT32</span></div><div style="--series:#a4c69c"><strong>0</strong><span>LittleFS + RS</span></div></div></figcaption></figure><figure data-volume="300" hidden>
+          <div class="research-plot-scroll" tabindex="0" role="region" aria-label="Scrollable fault injection chart">
+            <img src="assets/charts/faults-300.svg" width="800" height="420" loading="lazy" alt="Failed runs versus one to ten million injected bit flips, 300 MB image. At ten million flips: FAT32: 76, NiFAT32: 0, LittleFS + RS: 0. Lower counts are better."></div>
+          <figcaption><span>At 10 million injected flips</span><div class="fault-counts"><div style="--series:#b7a799"><strong>76</strong><span>FAT32</span></div><div style="--series:#ed6942"><strong>0</strong><span>NiFAT32</span></div><div style="--series:#a4c69c"><strong>0</strong><span>LittleFS + RS</span></div></div></figcaption></figure><figure data-volume="400" hidden>
+          <div class="research-plot-scroll" tabindex="0" role="region" aria-label="Scrollable fault injection chart">
+            <img src="assets/charts/faults-400.svg" width="800" height="420" loading="lazy" alt="Failed runs versus one to ten million injected bit flips, 400 MB image. At ten million flips: FAT32: 49, NiFAT32: 0, LittleFS + RS: 0. Lower counts are better."></div>
+          <figcaption><span>At 10 million injected flips</span><div class="fault-counts"><div style="--series:#b7a799"><strong>49</strong><span>FAT32</span></div><div style="--series:#ed6942"><strong>0</strong><span>NiFAT32</span></div><div style="--series:#a4c69c"><strong>0</strong><span>LittleFS + RS</span></div></div></figcaption></figure><figure data-volume="500" hidden>
+          <div class="research-plot-scroll" tabindex="0" role="region" aria-label="Scrollable fault injection chart">
+            <img src="assets/charts/faults-500.svg" width="800" height="420" loading="lazy" alt="Failed runs versus one to ten million injected bit flips, 500 MB image. At ten million flips: FAT32: 55, NiFAT32: 0, LittleFS + RS: 0. Lower counts are better."></div>
+          <figcaption><span>At 10 million injected flips</span><div class="fault-counts"><div style="--series:#b7a799"><strong>55</strong><span>FAT32</span></div><div style="--series:#ed6942"><strong>0</strong><span>NiFAT32</span></div><div style="--series:#a4c69c"><strong>0</strong><span>LittleFS + RS</span></div></div></figcaption></figure><p class="chart-note">Failed mount or file access. Payload integrity excluded. Lower is better.</p></div>
+<!-- research:chart:end --></div>
+        </div>
+      </section>
+      <section class="footprint-section page-width" aria-labelledby="footprint-title">
+        <div class="section-heading"><div><p class="eyebrow">FIT YOUR FIRMWARE</p><h2 id="footprint-title">Memory footprint.</h2></div><p>Minimum: 6,767 B ROM, 856 B RAM, read-only.<br>Default: includes a 500 KiB allocator pool.</p></div>
+        <!-- footprint:charts:start -->
+<div class="footprint-charts"><section class="footprint-panel rom-panel" aria-label="ROM · code + initialized data">
+          <h3>ROM · code + initialized data</h3><div class="chart-controls"></div><div class="chart-axis full-axis"><span>0</span><span>25 KiB</span><span>50 KiB</span></div>
+          
+          <div class="footprint-bars"><div class="footprint-row pool-profile">
+              <div class="bar-label"><strong>Default · O2</strong><span>44.48 KiB <small>(45,544 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:88.9531%;--bar-zoom:100.0000%"></span></div>
+              <p>Read/write · includes the 500 KiB allocator pool</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>External allocator</strong><span>33.62 KiB <small>(34,425 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:67.2363%;--bar-zoom:100.0000%"></span></div>
+              <p>Read-only · built-in allocator removed</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>Caches disabled</strong><span>24.85 KiB <small>(25,449 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:49.7051%;--bar-zoom:100.0000%"></span></div>
+              <p>Read-only · one entry, one I/O thread, no caches</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>Minimum read-only</strong><span>6.61 KiB <small>(6,767 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:13.2168%;--bar-zoom:100.0000%"></span></div>
+              <p>Read-only · Oz, LTO, public exports, reduced features</p></div></div></section><section class="footprint-panel ram-panel" aria-label="Static RAM · data + bss">
+          <h3>Static RAM · data + bss</h3><div class="chart-controls"><label class="ram-zoom"><input type="checkbox"> Zoom RAM to 0–6 KiB <span>(omit default pool)</span></label></div><div class="chart-axis full-axis"><span>0</span><span>280 KiB</span><span>560 KiB</span></div>
+          <div class="chart-axis zoom-axis"><span>0</span><span>3 KiB</span><span>6 KiB</span></div>
+          <div class="footprint-bars"><div class="footprint-row pool-profile">
+              <div class="bar-label"><strong>Default · O2</strong><span>505.23 KiB <small>(517,356 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:90.2197%;--bar-zoom:100.0000%"></span></div>
+              <p>Read/write · includes the 500 KiB allocator pool</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>External allocator</strong><span>5.07 KiB <small>(5,192 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:0.9054%;--bar-zoom:84.5052%"></span></div>
+              <p>Read-only · built-in allocator removed</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>Caches disabled</strong><span>1.27 KiB <small>(1,296 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:0.2260%;--bar-zoom:21.0938%"></span></div>
+              <p>Read-only · one entry, one I/O thread, no caches</p></div><div class="footprint-row">
+              <div class="bar-label"><strong>Minimum read-only</strong><span>0.84 KiB <small>(856 B)</small></span></div>
+              <div class="bar-track"><span style="--bar-full:0.1493%;--bar-zoom:13.9323%"></span></div>
+              <p>Read-only · Oz, LTO, public exports, reduced features</p></div></div></section></div>
+<!-- footprint:charts:end -->
+        <div class="footprint-bottom"><p>x86-64 · GCC 15.2.1 · static RAM excludes stacks and external allocation.</p><a class="text-link" href="#/docs/footprint">All 16 measurements &amp; build flags →</a></div>
+      </section>
+      <section class="explore-section page-width" aria-labelledby="explore-title">
+        <div class="section-heading"><div><p class="eyebrow">FROM FIRST BUILD TO FLASH</p><h2 id="explore-title">Find your next step.</h2></div><a class="text-link" href="#/docs/getting-started">Read the documentation</a></div>
+        <div class="explore-grid">
+          <a class="explore-card builder-card" href="#/builder"><div class="card-label">INTERACTIVE TOOL</div><div class="mini-map" aria-hidden="true"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>BOOT</span><span>FAT COPIES</span><span>DATA</span></div><h3>Your chip. Your geometry.</h3><p>Choose an IoT chip, tune redundancy, and map the filesystem onto its flash.</p><span class="card-cta">Open filesystem builder <span>+</span></span></a>
+          <a class="explore-card" href="#/animations"><div class="card-label">INTERACTIVE WALKTHROUGHS</div><div class="mini-flow" aria-hidden="true"><span>READ</span><i></i><span>DECODE</span><i></i><span>VOTE</span></div><h3>Follow the bytes.</h3><p>Step through the layout, mount sequence, write-ahead log, and upset recovery.</p><span class="card-cta">Explore the animations <span>+</span></span></a>
+        </div>
+      </section>
+      <section class="start-section page-width" aria-labelledby="start-title"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="start-title">Your first volume.<br>A few commands away.</h2><p>Build the tools, format an image, and open the interactive Unix shell.</p><a class="text-link" href="#/docs/getting-started">Read the setup guide</a></div><div class="terminal"><div class="panel-topline"><span><i class="terminal-dot"></i> QUICK START</span><button class="copy-button" data-copy="quick-start">Copy</button></div><pre><code id="quick-start"><span class="code-comment"># Build the formatter and Unix utility</span>
+make tools
+
+<span class="code-comment"># Create a default 64 MB volume</span>
+./formatter/formatter -o nifat32.img
+
+<span class="code-comment"># Mount and explore</span>
+./builds/unix_nifat32 nifat32.img 64 512 5 2</code></pre></div></section>
+      <div class="compatibility-note page-width"><span class="note-symbol">i</span><p><strong>A familiar API. A different disk format.</strong> NiFAT32 images aren't wire-compatible with standard FAT32. Access them through this library or compatible firmware. <a href="#/docs/footprint">Footprint &amp; build flags</a>.</p></div>
+    </div>
+    <div id="docs-page" class="docs-layout" hidden>
+      <button class="docs-menu-button button secondary" aria-expanded="false" aria-controls="docs-sidebar">Browse documentation</button>
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation"></aside>
+      <div class="document-area"><div class="document-topline"><span id="breadcrumb">DOCUMENTATION</span><a id="edit-source" href="https://github.com/j1sk1ss/NIFAT32/tree/main/docs" target="_blank" rel="noopener noreferrer">View source</a></div><article id="document-content" class="markdown-body"></article><nav id="page-pagination" class="page-pagination" aria-label="Previous and next pages"></nav></div>
+      <aside class="page-outline" aria-label="On this page"><p>ON THIS PAGE</p><nav id="page-outline"></nav></aside>
+    </div>
+  </main>
+  <footer class="site-footer page-width"><a class="brand" href="#/"><img src="assets/logo.svg" width="30" height="30" alt=""><span>NiFAT<span class="accent">32</span></span></a><p>Resilience, down to the bit.</p><div><a href="https://github.com/j1sk1ss/NIFAT32" target="_blank" rel="noopener noreferrer">Source code</a><a href="https://github.com/j1sk1ss/NIFAT32/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT license</a></div></footer>
+  <dialog id="search-dialog" aria-labelledby="search-title"><div class="search-heading"><h2 id="search-title">Search documentation</h2><button class="icon-button close-search" aria-label="Close search">×</button></div><label class="sr-only" for="search-input">Search terms</label><input id="search-input" type="search" placeholder="Architecture, Hamming, mount…" autocomplete="off"><div id="search-results" aria-live="polite"></div><p class="search-help"><kbd>Esc</kbd> to close <span>Search across guides, API, and tools</span></p></dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <noscript><div class="noscript-note">Enable JavaScript to search and browse the documentation. You can also <a href="https://github.com/j1sk1ss/NIFAT32/tree/main/docs/docs">read the guides on GitHub</a>, open the <a href="pages/builder.html">filesystem builder</a>, or view the <a href="pages/animations.html">walkthroughs</a>.</div></noscript>
+</body>
+</html>

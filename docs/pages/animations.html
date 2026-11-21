@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NiFAT32 — How it works</title>
+<style>
+  :root {
+    --bg: #100e0d; --panel: #241b14; --panel2: #302217; --line: #453125;
+    --text: #f4dcc0; --muted: #b7a799; --accent: #ed6942; --good: #a4c69c; --bad: #ed6942; --warn: #eab308;
+    --fat: #ed6942; --bs: #a4c69c; --journal: #8ea9b7; --error: #c19cb9; --root: #ca9c60; --data: #3c3025;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 14px 20px 0; }
+  header h1 { font-size: 18px; margin: 0 0 10px; }
+  header h1 span { color: var(--accent); }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tabs button {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px 8px 0 0;
+    padding: 8px 16px; font: inherit; cursor: pointer; border-bottom: none;
+  }
+  .tabs button.on { background: var(--panel2); color: var(--text); font-weight: 600; }
+  .scene { background: var(--panel2); border: 1px solid var(--line); border-radius: 0 10px 10px 10px; margin: 0 20px; padding: 16px; }
+  .stage { width: 100%; overflow-x: auto; }
+  svg { display: block; margin: 0 auto; }
+  .controls { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .controls button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 14px; font: inherit; cursor: pointer;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button:disabled { opacity: .4; cursor: default; }
+  .controls .stepno { color: var(--muted); font-size: 13px; }
+  .caption { margin-top: 12px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+             border-radius: 6px; padding: 10px 14px; min-height: 52px; }
+  .caption b { color: var(--accent); }
+  .side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  @media (max-width: 900px) { .side { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 13px; }
+  .panel h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .panel table { width: 100%; border-collapse: collapse; }
+  .panel td { padding: 3px 6px; border-bottom: 1px dashed var(--line); font-family: ui-monospace, monospace; font-size: 12px; }
+  .panel td:first-child { color: var(--muted); font-family: inherit; }
+  .pulse { animation: pulse 0.9s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .flash { animation: flash 0.5s ease-in-out 3; }
+  @keyframes flash { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+  .fadein { animation: fadein .6s ease-out; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .subbtns { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+  .subbtns button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+  .subbtns button:hover { border-color: var(--accent); }
+</style>
+<link rel="stylesheet" href="tools.css">
+<script src="tools.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>NiFAT32 <span>— how it works</span></h1>
+  <div class="tabs">
+    <button data-tab="layout" class="on">Layout</button>
+    <button data-tab="mount">Mount</button>
+    <button data-tab="write">Write</button>
+    <button data-tab="upset">Upset &amp; repair</button>
+  </div>
+</header>
+
+<div class="scene">
+  <div class="stage" id="stage"></div>
+  <div class="controls" id="controls"></div>
+  <div class="caption" id="caption"></div>
+  <div class="side" id="side"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= NiFAT32 geometry (same as the builder) =================
+   Port of include/nft32/addresses.h: seeds, mix32, placement macros.
+   FAT lands at sectors_padd + GET_FATSECTOR = 32 + 23 + mix32(...) % (ts-23). */
+const BOOT_SEED = 0xA341316C, FAT_SEED = 0xC8013EA4, JOURNAL_SEED = 0xAD90777D, ERRORS_SEED = 0x7E95761E;
+function mix32(x) {
+  x = (x >>> 0) ^ (x >>> 16); x = Math.imul(x, 0x7FEB352D);
+  x ^= x >>> 15;              x = Math.imul(x, 0x846CA68B);
+  x ^= x >>> 16; return x >>> 0;
+}
+const bootSec = (i, ts)    => 2  + mix32((i + BOOT_SEED)    >>> 0) % (ts - 2);
+const journalSec = (i, ts) => 2  + mix32((i + JOURNAL_SEED) >>> 0) % (ts - 2);
+const errorSec  = (i, ts)  => 2  + mix32((i + ERRORS_SEED)  >>> 0) % (ts - 2);
+const fatSec    = (i, ts)  => 55 + mix32((i + FAT_SEED)     >>> 0) % (ts - 23);
+function calcFatSize(ts, fc, spc) {
+  const data = ts - 32;
+  let f = 0, prev = -1;
+  for (let i = 0; i < 64 && f !== prev; i++) { prev = f; f = Math.ceil(Math.floor((data - fc * f) / spc) * 4 / 512); }
+  return f;
+}
+
+/* Demo volume: 4 MB, spc 8, fc 5, bsbc 5, jc 2, ec 1 (same family as `make unit`) */
+const DEMO = { sizeMB: 4, spc: 8, fc: 5, bsbc: 5, jc: 2, ec: 1 };
+const TS = DEMO.sizeMB * 2048; // 512 B sectors
+const FAT_SIZE = calcFatSize(TS, DEMO.fc, DEMO.spc);
+const FIRST_DATA = 32 + DEMO.fc * FAT_SIZE;
+const TOTAL_CLUSTERS = Math.floor((TS - 32 - DEMO.fc * FAT_SIZE) / DEMO.spc);
+const BS = Array.from({ length: DEMO.bsbc }, (_, i) => bootSec(i, TS));
+const FATS = Array.from({ length: DEMO.fc }, (_, i) => fatSec(i, TS));
+const JS = Array.from({ length: DEMO.jc }, (_, i) => journalSec(i, TS));
+const ES = Array.from({ length: DEMO.ec }, (_, i) => errorSec(i, TS));
+
+const W = 1040, H = 150;
+const X = s => 20 + (W - 40) * s / TS;
+
+/* ================= Hamming(15,11) — port of formatter/_encode_hamming_15_11
+   data bit i -> encoded bit pos[i]; parity: p1->bit0, p2->bit1, p4->bit3, p8->bit7 */
+const b = (w, i) => (w >> i) & 1;
+const HAM_POS = [2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14];
+function hamEncode(byte) {
+  let e = 0;
+  for (let i = 0; i < 11; i++) if (b(byte, i)) e |= 1 << HAM_POS[i];
+  const p1 = b(e,2)^b(e,4)^b(e,6)^b(e,8)^b(e,10)^b(e,12)^b(e,14);
+  const p2 = b(e,2)^b(e,5)^b(e,6)^b(e,9)^b(e,10)^b(e,13)^b(e,14);
+  const p4 = b(e,4)^b(e,5)^b(e,6)^b(e,11)^b(e,12)^b(e,13)^b(e,14);
+  const p8 = b(e,8)^b(e,9)^b(e,10)^b(e,11)^b(e,12)^b(e,13)^b(e,14);
+  if (p1) e |= 1; if (p2) e |= 2; if (p4) e |= 8; if (p8) e |= 128;
+  return e;
+}
+function hamDecode(word) {
+  const s1 = b(word,0)^b(word,2)^b(word,4)^b(word,6)^b(word,8)^b(word,10)^b(word,12)^b(word,14);
+  const s2 = b(word,1)^b(word,2)^b(word,5)^b(word,6)^b(word,9)^b(word,10)^b(word,13)^b(word,14);
+  const s4 = b(word,3)^b(word,4)^b(word,5)^b(word,6)^b(word,11)^b(word,12)^b(word,13)^b(word,14);
+  const s8 = b(word,7)^b(word,8)^b(word,9)^b(word,10)^b(word,11)^b(word,12)^b(word,13)^b(word,14);
+  const synd = s1 + s2 * 2 + s4 * 4 + s8 * 8;
+  if (synd) return { value: extract(word ^ (1 << (synd - 1))), corrected: 1, synd: synd - 1 };
+  return { value: extract(word), corrected: 0, synd: 0 };
+}
+function extract(word) {
+  let v = 0;
+  for (let i = 0; i < 11; i++) if (b(word, HAM_POS[i])) v |= 1 << i;
+  return v;
+}
+/* 4-byte FAT value -> 4 Hamming words (little-endian, like nft32_pack_memory on x86) */
+function encodeValue32(v) {
+  return [0, 1, 2, 3].map(i => hamEncode((v >>> (8 * i)) & 0xff));
+}
+function decodeWords32(words) {
+  let correctedCount = 0, v32 = 0, correctedBits = [];
+  words.forEach((w, i) => {
+    const d = hamDecode(w);
+    if (d.corrected) { correctedCount++; correctedBits[i] = d.synd; } else correctedBits[i] = null;
+    // nft32_unpack_memory casts each decoded Hamming word back to one byte.
+    v32 |= (d.value & 0xff) << (8 * i);
+  });
+  return { value: v32 >>> 0, correctedCount, correctedBits };
+}
+/* The voting algorithm of read_fat() in src/fat.c (Boyer–Moore majority,
+   `wrong` counter starts at -1; wrong > 0 triggers the rewrite). */
+function vote(values) {
+  let wrong = -1, valFreq = 0, val = -1;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v === val) valFreq++;
+    else { valFreq--; wrong++; }
+    if (valFreq < 0) { val = v; valFreq = 0; }
+  }
+  return { value: val >>> 0, wrong: Math.max(0, wrong) };
+}
+
+/* ================= Step runner ================= */
+const state = { tab: "layout", step: 0, playing: false, timer: null };
+const stage = document.getElementById("stage");
+const captionEl = document.getElementById("caption");
+const controlsEl = document.getElementById("controls");
+const sideEl = document.getElementById("side");
+
+function togglePlay() {
+  if (state.playing) { stop(); render(); }
+  else {
+    state.playing = true;
+    state.timer = setInterval(() => {
+      if (state.tab === "upset") { if (upset.phase < 5) applyUpsetPhase(); else { stop(); render(); } return; }
+      const t = TABS[state.tab];
+      if (state.step >= t.steps.length - 1) { stop(); render(); return; }
+      state.step++; render();
+    }, 2200);
+    render();
+  }
+}
+function stop() {
+  state.playing = false;
+  if (state.timer) clearInterval(state.timer);
+  state.timer = null;
+}
+
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.onclick = () => {
+    stop();
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("on"));
+    btn.classList.add("on");
+    state.tab = btn.dataset.tab;
+    state.step = 0;
+    render();
+  };
+});
+
+/* ================= SVG helpers ================= */
+function structRect(sec, size, color, cls, label) {
+  const x = X(sec), w = Math.max(5, X(sec + size) - x);
+  const y = 52, h = 56;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" rx="2" class="${cls || ""}"/>`;
+  if (label) s += `<text x="${x + w / 2}" y="${y - 8}" fill="${color}" font-size="11" font-weight="700" text-anchor="middle">${label}</text>`;
+  return s;
+}
+function baseStrip(step) {
+  let s = `<rect x="20" y="52" width="${W - 40}" height="56" fill="#140f0c" rx="3"/>`;
+  if (step >= 1) {
+    s += `<rect x="${X(0)}" y="52" width="${Math.max(3, X(2) - X(0))}" height="56" fill="#453125"/>`;
+    s += `<rect x="${X(2)}" y="52" width="${X(32) - X(2)}" height="56" fill="#3f4c63"/>`;
+    s += `<rect x="${X(32)}" y="52" width="${X(FIRST_DATA) - X(32)}" height="56" fill="#4d4636"/>`;
+    s += `<rect x="${X(FIRST_DATA)}" y="52" width="${X(TS) - X(FIRST_DATA)}" height="56" fill="#13233c"/>`;
+    s += `<text x="${X(2) + 2}" y="122" fill="#b7a799" font-size="10">meta zone (2–31)</text>`;
+    s += `<text x="${X(32) + 4}" y="46" fill="#b7a799" font-size="10">cluster gap</text>`;
+    s += `<text x="${X(FIRST_DATA) + 8}" y="122" fill="#b7a799" font-size="10">data clusters — root dir = cluster 2</text>`;
+  }
+  s += `<line x1="20" y1="132" x2="${W - 20}" y2="132" stroke="#453125"/>`;
+  for (const s2 of [0, 1024, 2048, 4096, 6144, 8192]) {
+    s += `<line x1="${X(s2)}" y1="128" x2="${X(s2)}" y2="136" stroke="#453125"/>`;
+    s += `<text x="${X(s2)}" y="148" fill="#a08c78" font-size="9" text-anchor="middle">${s2 === 0 ? "0" : s2 / 1024 + "K"}</text>`;
+  }
+  return s;
+}
+
+/* ================= Tab: Layout ================= */
+const layoutSide = () => `
+  <div class="panel">
+    <h3>Demo geometry</h3>
+    <table>
+      <tr><td>Volume</td><td>${TS} sectors (4 MiB, 512 B)</td></tr>
+      <tr><td>spc / fc / bsbc / jc / ec</td><td>8 / 5 / 5 / 2 / 1</td></tr>
+      <tr><td>fat_size (solved iteratively)</td><td>${FAT_SIZE} sectors</td></tr>
+      <tr><td>first data sector</td><td>32 + 5·${FAT_SIZE} = ${FIRST_DATA}</td></tr>
+      <tr><td>clusters</td><td>${TOTAL_CLUSTERS}</td></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h3>Placement formulas (addresses.h)</h3>
+    <table>
+      <tr><td>Boot copy i</td><td>2 + mix32(i + 0xA341316C) % (ts−2)</td></tr>
+      <tr><td>FAT copy i</td><td>55 + mix32(i + 0xC8013EA4) % (ts−23)</td></tr>
+      <tr><td>Journal i</td><td>2 + mix32(i + 0xAD90777D) % (ts−2)</td></tr>
+      <tr><td>Error area i</td><td>2 + mix32(i + 0x7E95761E) % (ts−2)</td></tr>
+    </table>
+    <div style="color:var(--muted);font-size:12px;margin-top:8px">
+      Each copy lands at a different pseudo-random sector. The same formulas run in the formatter
+      and in the library, so mounting never searches for a structure — it computes where it is.
+      Strip scale: positions exact, structures drawn with a 5 px minimum.
+    </div>
+  </div>`;
+
+const layoutSteps = [
+  {
+    name: "Pristine image",
+    caption: `A formatted 4 MiB image: <b>${TS} sectors</b> of 512 B. The formatter is about to place the structures; nothing lives at a fixed address yet.`,
+    side: layoutSide()
+  },
+  {
+    name: "Bands",
+    caption: `Clusters start at sector <b>32 + fc·fat_size = ${FIRST_DATA}</b>. fat_size is solved iteratively until the FAT table fits its own allocated space: ${TOTAL_CLUSTERS} clusters × 4 B ≈ <b>${FAT_SIZE} sectors</b> decoded (${2 * FAT_SIZE} sectors Hamming-encoded on disk). The root directory is <b>cluster 2</b>, the first data cluster.`,
+    side: layoutSide()
+  },
+  {
+    name: "FAT copies",
+    caption: `The formatter writes the Hamming-encoded FAT table ${DEMO.fc} times. Copy i lands at sector <b>55 + mix32(i + 0xC8013EA4) % (ts−23)</b> — each copy is <b>${2 * FAT_SIZE} sectors</b> and the copies are far apart, so one scratch cannot hit them all: ${FATS.map(s => s).join(", ")}.`,
+    side: layoutSide()
+  },
+  {
+    name: "Boot copies",
+    caption: `${DEMO.bsbc} boot sector copies, each 1 sector (77 B encoded structure, zero-padded), at ${BS.map(s => s).join(", ")}. The mount tries them in order 0..${DEMO.bsbc - 1}; a damaged copy is skipped and rewritten from a good one.`,
+    side: layoutSide()
+  },
+  {
+    name: "Journals + errors",
+    caption: `${DEMO.jc} journal areas of spc=${DEMO.spc} sectors at ${JS.join(", ")} and ${DEMO.ec} error-storage area at ${ES.join(", ")}. The journal is a write-ahead log for directory-entry operations; the error ring stores the faults the library recovers from.`,
+    side: layoutSide()
+  },
+  {
+    name: "Root directory",
+    caption: `The root directory occupies cluster 2 — sectors <b>${FIRST_DATA}…${FIRST_DATA + DEMO.spc - 1}</b> — as ${DEMO.spc * 512 / 32} encoded 32-byte entries. Every entry carries a name hash (Murmur3 of the 8.3 name) and a full-entry Murmur3 checksum.`,
+    side: layoutSide()
+  },
+  {
+    name: "Free space",
+    caption: `Everything else is free: <b>${TOTAL_CLUSTERS}</b> clusters in total, minus the ones the scattered structures sit on. File cluster chains also start at pseudo-random free offsets, so the hottest data is not clumped together either.`,
+    side: layoutSide()
+  }
+];
+
+function layoutRender(step) {
+  let s = `<svg viewBox="0 0 ${W} ${H + 10}" width="${W}">` + baseStrip(step);
+  if (step >= 2) FATS.forEach((sec, i) => { s += structRect(sec, 2 * FAT_SIZE, "var(--fat)", "fadein", "F" + i); });
+  if (step >= 3) BS.forEach((sec, i) => { s += structRect(sec, 1, "var(--bs)", "fadein", "BS" + i); });
+  if (step >= 4) {
+    JS.forEach((sec, i) => { s += structRect(sec, DEMO.spc, "var(--journal)", "fadein", "J" + i); });
+    ES.forEach((sec, i) => { s += structRect(sec, DEMO.spc, "var(--error)", "fadein", "E" + i); });
+  }
+  if (step >= 5) s += structRect(FIRST_DATA, DEMO.spc, "var(--root)", "pulse", "root (C2)");
+  if (step >= 6) s += `<rect x="${X(FIRST_DATA + DEMO.spc)}" y="52" width="${X(TS) - X(FIRST_DATA + DEMO.spc)}" height="56" fill="rgba(30,58,95,.35)"/>`;
+  s += `</svg>`;
+  return { svg: s, caption: layoutSteps[step].caption, side: layoutSteps[step].side };
+}
+
+/* ================= Tab: Mount ================= */
+const MOUNT_BAD_SUM = "0x1A2B3C4D", MOUNT_GOOD_SUM = "0xDEADBEEF";
+const mountSteps = [
+  {
+    name: "Mount request",
+    caption: `Host calls <b>NIFAT32_init()</b> with bs_num=0, bs_count=${DEMO.bsbc}, ts=${TS}. The first boot copy is read at its computed sector — there is no search, no MBR, no partition table.`
+  },
+  {
+    name: "Copy 0 damaged",
+    caption: `Copy 0 @ sector ${BS[0]}: Hamming decode ok, but one of the two Murmur3 checksums does not match (<b>${MOUNT_BAD_SUM} ≠ ${MOUNT_GOOD_SUM}</b>). The copy is untrusted: CHECKSUM_CHECK_ERROR goes into the error ring and NIFAT32_init() retries with bs_num=1.`
+  },
+  {
+    name: "Copy 1 ok",
+    caption: `Copy 1 @ sector ${BS[1]} decodes and both checksums match — the boot structure is accepted. (The fallback loop recurses up to bs_count times; in the demo copy 0 was damaged by an upset.)`
+  },
+  {
+    name: "Repair",
+    caption: `Because bs_num &gt; 0, the library rewrites the accepted encoded boot structure to the other ${DEMO.bsbc - 1} copies — including the damaged one. After this step all ${DEMO.bsbc} copies agree again.`
+  },
+  {
+    name: "Geometry",
+    caption: `The accepted boot sector yields the whole geometry: spc=${DEMO.spc}, fat_size=${FAT_SIZE}, fc=${DEMO.fc}, ts=${TS}, first data sector ${FIRST_DATA}, ${TOTAL_CLUSTERS} clusters. The FAT cache is initialized (lazy in this build).`
+  },
+  {
+    name: "Journal replay",
+    caption: `restore_from_journal() walks the journal slots in all ${DEMO.jc} copies: 2 unsolved entries (an ADD and an EDIT) are voted across the copies, applied to the directory clusters, and cleared to NO_OP. The volume is consistent — mount returns success.`
+  }
+];
+
+function mountRender(step) {
+  let s = `<svg viewBox="0 0 ${W} 240" width="${W}">`;
+  const cw = 150, gap = (W - 40 - DEMO.bsbc * cw) / (DEMO.bsbc - 1), y = 70;
+  BS.forEach((sec, i) => {
+    let fill = "#241b14", stroke = "#453125", extra = "";
+    if (step === 1 && i === 0) { fill = "rgba(239,68,68,.25)"; stroke = "var(--bad)"; extra = ' class="flash"'; }
+    if (step === 2 && i === 1) { fill = "rgba(34,197,94,.25)"; stroke = "var(--good)"; }
+    if (step === 3 && i !== 1) { fill = "rgba(34,197,94,.25)"; stroke = "var(--good)"; extra = ' class="pulse"'; }
+    if (step >= 4) { fill = "rgba(34,197,94,.12)"; stroke = "#a4c69c55"; }
+    const x = 20 + i * (cw + gap);
+    s += `<g${extra}>
+      <rect x="${x}" y="${y}" width="${cw}" height="64" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+      <text x="${x + cw / 2}" y="${y + 26}" fill="var(--text)" font-size="14" font-weight="700" text-anchor="middle">Boot copy ${i}</text>
+      <text x="${x + cw / 2}" y="${y + 46}" fill="var(--muted)" font-size="11" text-anchor="middle" font-family="monospace">sector ${sec}</text>
+    </g>`;
+    let mark = "";
+    if (step === 1 && i === 0) mark = `<text x="${x + cw + 8}" y="${y + 38}" font-size="22" fill="var(--bad)">✗</text>`;
+    if (step === 2 && i === 1) mark = `<text x="${x + cw + 8}" y="${y + 38}" font-size="22" fill="var(--good)">✓</text>`;
+    if (step === 3 && i !== 1) mark = `<text x="${x + cw + 8}" y="${y + 38}" font-size="18" fill="var(--good)">↻</text>`;
+    if (step >= 4) mark = `<text x="${x + cw + 8}" y="${y + 38}" font-size="16" fill="var(--good)">✓</text>`;
+    s += mark;
+    if (step === 3 && i !== 1) {
+      s += `<path d="M ${x + cw / 2 - 20} ${y - 22} q 20 -14 40 0" stroke="var(--good)" fill="none" stroke-dasharray="4 3"/>`;
+      s += `<text x="${x + cw / 2 + 24}" y="${y - 28}" fill="var(--good)" font-size="10" text-anchor="middle">rewrite</text>`;
+    }
+  });
+
+  s += `<rect x="20" y="160" width="${W - 40}" height="70" rx="8" fill="#140f0c" stroke="#453125"/>`;
+  if (step === 0) {
+    s += `<text x="40" y="190" fill="var(--muted)" font-size="13" font-family="monospace">reading boot copy 0 @ sector ${BS[0]} …</text>`;
+  } else if (step === 1) {
+    s += `<text x="40" y="190" fill="var(--bad)" font-size="13" font-family="monospace">checksum mismatch: stored ${MOUNT_BAD_SUM} ≠ computed ${MOUNT_GOOD_SUM} → CHECKSUM_CHECK_ERROR</text>`;
+    s += `<text x="40" y="212" fill="var(--muted)" font-size="12" font-family="monospace">errors_register_error() · bs_num: 0 → 1 · retry NIFAT32_init()</text>`;
+  } else if (step === 2) {
+    s += `<text x="40" y="190" fill="var(--good)" font-size="13" font-family="monospace">copy 1: Hamming ok · both Murmur3 checksums ok → boot structure accepted</text>`;
+  } else if (step === 3) {
+    s += `<text x="40" y="190" fill="var(--good)" font-size="13" font-family="monospace">encoded boot structure written to copies 0, 2, 3, 4</text>`;
+    s += `<text x="40" y="212" fill="var(--muted)" font-size="12" font-family="monospace">${DEMO.bsbc - 1} repair writes · all copies identical again</text>`;
+  } else {
+    s += `<text x="40" y="188" fill="var(--text)" font-size="12" font-family="monospace">spc=${DEMO.spc}  fat_size=${FAT_SIZE}  fc=${DEMO.fc}  ts=${TS}  first_data=${FIRST_DATA}  clusters=${TOTAL_CLUSTERS}</text>`;
+    s += `<text x="40" y="210" fill="var(--good)" font-size="12" font-family="monospace">journal: 2 unsolved entries replayed (ADD, EDIT) → cleared to NO_OP · NIFAT32_init() = 1</text>`;
+  }
+  s += `</svg>`;
+
+  const side = `<div class="panel">
+    <h3>Mount sequence (NIFAT32_init)</h3>
+    <table>
+      <tr><td>1</td><td>read BS copy #bs_num</td></tr>
+      <tr><td>2</td><td>Hamming decode + 2× Murmur3 check</td></tr>
+      <tr><td>3</td><td>fail → error ring, bs_num++, retry</td></tr>
+      <tr><td>4</td><td>bs_num&gt;0 → rewrite all copies</td></tr>
+      <tr><td>5</td><td>geometry, FAT cache (lazy/hard/map)</td></tr>
+      <tr><td>6</td><td>journal replay → mount done</td></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h3>Why the copies are scattered</h3>
+    <div style="font-size:12.5px;color:var(--muted)">
+      The copies live at ${BS.join(", ")} — mix32 spreads them across the whole volume.
+      A scratch (MEU) covering one neighborhood can kill one or two copies, but the fallback
+      chain still finds a good one and rewrites the rest.
+    </div>
+  </div>`;
+  return { svg: s, caption: mountSteps[step].caption, side };
+}
+
+/* ================= Tab: Write ================= */
+const CL = 8; // data clusters shown (C2..C9)
+const FAT_ENTRIES = 8;
+const JOURNAL_SLOTS = 8;
+function freshWriteState() {
+  const fat = [];
+  for (let c = 2; c < 2 + FAT_ENTRIES; c++) fat.push(c === 2 ? -1 : 0); // -1 = END, 0 = free
+  return {
+    fat,
+    journal: Array.from({ length: DEMO.jc }, () => Array(JOURNAL_SLOTS).fill(null)),
+    rootSlots: [
+      { name: "REPORT TXT", attr: "file", c: 3 },
+      null, null, null
+    ],
+    entrySlot: 1,
+    data: new Array(CL).fill(false)
+  };
+}
+
+function writeScene(step) {
+  const s0 = freshWriteState();
+  // C5 allocated at step>=1, journal at 2, entry at 3, journal solved at 4, FAT at 5, data at 6
+  if (step >= 2) { s0.journal[0][3] = "ADD C5"; s0.journal[1][3] = "ADD C5"; }
+  if (step >= 3) s0.rootSlots[1] = { name: "LOG    TXT", attr: "file", c: 5 };
+  if (step >= 4) { s0.journal[0][3] = "NO_OP"; s0.journal[1][3] = "NO_OP"; }
+  if (step >= 5) s0.fat[3] = -1; // entry C5 = END
+  if (step >= 6) s0.data[3] = true;
+
+  let svg = `<svg viewBox="0 0 ${W} 330" width="${W}">`;
+
+  // Root directory cluster
+  svg += `<text x="20" y="24" fill="var(--muted)" font-size="12" font-weight="700">ROOT DIRECTORY CLUSTER (C2) — ${DEMO.spc * 512 / 32} entries × 32 B, encoded</text>`;
+  for (let i = 0; i < 4; i++) {
+    const x = 20 + i * 150, y = 32;
+    const e = s0.rootSlots[i];
+    const hot = (step === 0 && i === 1) || (step === 3 && i === 1);
+    svg += `<rect x="${x}" y="${y}" width="140" height="44" rx="6" fill="${e ? "#16324a" : "#101c2e"}" stroke="${hot ? "var(--accent)" : "#453125"}" stroke-width="${hot ? 2 : 1}" class="${hot ? "pulse" : ""}"/>`;
+    if (e) {
+      svg += `<text x="${x + 8}" y="${y + 18}" fill="var(--text)" font-size="12" font-family="monospace">${e.name}</text>`;
+      svg += `<text x="${x + 8}" y="${y + 34}" fill="var(--muted)" font-size="10" font-family="monospace">dca=${e.c} · murmur3 ✓</text>`;
+    } else {
+      svg += `<text x="${x + 8}" y="${y + 26}" fill="#66513e" font-size="11">slot ${i} (empty)</text>`;
+    }
+  }
+
+  // FAT rows
+  svg += `<text x="20" y="104" fill="var(--muted)" font-size="12" font-weight="700">FAT — ${DEMO.fc} copies, entries C2…C9 (free / END = chain end)</text>`;
+  for (let r = 0; r < DEMO.fc; r++) {
+    const y = 112 + r * 26;
+    const hot = step === 5;
+    svg += `<text x="20" y="${y + 16}" fill="var(--fat)" font-size="11" font-weight="700">F${r}</text>`;
+    for (let c = 0; c < FAT_ENTRIES; c++) {
+      const x = 44 + c * 62;
+      const val = s0.fat[c];
+      const isC5 = c === 3;
+      const hotCell = hot && isC5;
+      svg += `<rect x="${x}" y="${y}" width="56" height="20" rx="4" fill="${hotCell ? "rgba(239,68,68,.3)" : "#140f0c"}" stroke="${isC5 ? "var(--fat)" : "#453125"}" class="${hotCell ? "pulse" : ""}"/>`;
+      svg += `<text x="${x + 28}" y="${y + 14}" fill="${val === 0 ? "#66513e" : "var(--good)"}" font-size="10" text-anchor="middle" font-family="monospace">${val === 0 ? "free" : "END"}</text>`;
+      if (c === 0) svg += `<text x="${x + 28}" y="${y - 4}" fill="#a08c78" font-size="9" text-anchor="middle">C2…</text>`;
+    }
+    if (hot) svg += `<text x="${44 + FAT_ENTRIES * 62 + 8}" y="${y + 14}" fill="var(--good)" font-size="11" font-weight="700" class="pulse">write ✓</text>`;
+  }
+
+  // Data clusters
+  svg += `<text x="20" y="262" fill="var(--muted)" font-size="12" font-weight="700">DATA CLUSTERS (C2…C9)</text>`;
+  for (let c = 0; c < CL; c++) {
+    const x = 20 + c * 122, y = 270;
+    const isRoot = c === 0, isC5 = c === 3;
+    const filled = s0.data[c];
+    const hot = (step === 1 && isC5) || (step === 6 && isC5);
+    let fill = isRoot ? "rgba(180,83,9,.5)" : filled ? "#27476e" : "#101c2e";
+    svg += `<rect x="${x}" y="${y}" width="112" height="40" rx="6" fill="${fill}" stroke="${isC5 ? "var(--accent)" : "#453125"}" stroke-width="${isC5 ? 2 : 1}" class="${hot ? "pulse" : ""}"/>`;
+    svg += `<text x="${x + 56}" y="${y + 16}" fill="var(--text)" font-size="10" text-anchor="middle" font-weight="700">C${c + 2}</text>`;
+    svg += `<text x="${x + 56}" y="${y + 30}" fill="var(--muted)" font-size="9" text-anchor="middle">${isRoot ? "dir" : filled ? "4096 B ✓" : (isC5 && step >= 1 ? "allocated" : "free")}</text>`;
+  }
+
+  // Journal
+  const jy = 200;
+  svg += `<text x="620" y="${jy - 8}" fill="var(--muted)" font-size="12" font-weight="700">JOURNAL — ${DEMO.jc} copies × ${JOURNAL_SLOTS} slots (WAL)</text>`;
+  for (let r = 0; r < DEMO.jc; r++) {
+    const y = jy + r * 26;
+    const hot = step === 2;
+    svg += `<text x="620" y="${y + 16}" fill="var(--journal)" font-size="11" font-weight="700">J${r}</text>`;
+    for (let k = 0; k < JOURNAL_SLOTS; k++) {
+      const x = 644 + k * 34;
+      const v = s0.journal[r][k];
+      const hotCell = hot && k === 3;
+      svg += `<rect x="${x}" y="${y}" width="30" height="20" rx="4" fill="${v === "ADD C5" ? "rgba(59,130,246,.35)" : "#140f0c"}" stroke="${hotCell ? "var(--journal)" : "#453125"}" class="${hotCell ? "pulse" : ""}"/>`;
+      svg += `<text x="${x + 15}" y="${y + 14}" fill="${v ? "var(--text)" : "#66513e"}" font-size="8" text-anchor="middle" font-family="monospace">${v === "ADD C5" ? "ADD" : v === "NO_OP" ? "NO_OP" : "·"}</text>`;
+    }
+  }
+  svg += `<text x="620" y="${jy + DEMO.jc * 26 + 14}" fill="var(--muted)" font-size="10" font-family="monospace">slot 3: op=ADD, ca=2, off=1, entry{name, rca, dca, size}</text>`;
+
+  // write counter
+  let nW = 0;
+  if (step >= 2) nW += 2;
+  if (step >= 3) nW += 1;
+  if (step >= 4) nW += 2;
+  if (step >= 5) nW += DEMO.fc;
+  if (step >= 6) nW += 1;
+  svg += `<text x="${W - 20}" y="24" fill="var(--accent)" font-size="12" font-weight="700" text-anchor="end">disk writes so far: ${nW}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+const writeSteps = [
+  { name: "Lookup", caption: `open("LOG TXT", R|W|CR, FILE_TARGET): the path resolves to the root directory, and the slot for <b>LOG    TXT</b> is still empty. With CR_MODE the entry will be created.` },
+  { name: "Allocate", caption: `A free cluster is picked at a pseudo-random offset within free space: <b>C5</b>. Nothing is written to the FAT yet — allocation must survive a crash, which is the journal's job.` },
+  { name: "Journal (WAL)", caption: `journal_add_operation(ADD_OP, ca=2, off=1, entry) writes the squeezed entry to <b>slot 3 of all ${DEMO.jc} journal copies</b> — before the directory cluster is touched. A power loss right now leaves an unsolved entry that the next mount replays.` },
+  { name: "Directory entry", caption: `The encoded directory entry (8.3 name, name_hash, rca, dca=C5, size, Murmur3 checksum) is written to root slot 1 — one disk write of ${DEMO.spc * 512} B.` },
+  { name: "Journal solved", caption: `journal_solve_operation() clears slot 3 to NO_OP in all ${DEMO.jc} copies. The operation is now committed: the journal no longer needs to replay it.` },
+  { name: "FAT fan-out", caption: `write_fat(C5 = END) updates entry C5 in <b>all ${DEMO.fc} FAT copies</b> — ${DEMO.fc} disk writes, plus the in-memory cache and the free-cluster bitmap. This fan-out is what the vote can repair later.` },
+  { name: "Data", caption: `4096 B of file data land in cluster C5. One small file entry cost the volume <b>10 disk writes</b> (2 journal + 1 entry + 2 journal-clear + 5 FAT + 1 data) — the price of redundancy that survives upsets.` }
+];
+
+function writeRender(step) {
+  const side = `<div class="panel">
+    <h3>Write sequence (entry.c / cluster.c / journal.c)</h3>
+    <table>
+      <tr><td>1</td><td>path lookup (hash + ecache)</td></tr>
+      <tr><td>2</td><td>alloc_cluster (pseudo-random offset)</td></tr>
+      <tr><td>3</td><td>journal ADD → all jc copies</td></tr>
+      <tr><td>4</td><td>encoded dir entry → directory cluster</td></tr>
+      <tr><td>5</td><td>journal NO_OP → all jc copies</td></tr>
+      <tr><td>6</td><td>write_fat → all fc copies</td></tr>
+      <tr><td>7</td><td>data → cluster</td></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h3>Crash points</h3>
+    <div style="font-size:12.5px;color:var(--muted)">
+      After step 3 but before step 5 the journal still holds ADD → next mount rewrites the entry.<br>
+      After step 5 the entry is durable and the FAT fan-out is the only remaining risk —
+      and every one of its ${DEMO.fc} targets is a separate copy.
+    </div>
+  </div>`;
+  return { svg: writeScene(step), caption: writeSteps[step].caption, side };
+}
+
+/* ================= Tab: Upset & repair ================= */
+const CLUSTER_VAL = 0x0000000A; // FAT entry C5 -> cluster 10
+let upset = { copies: null, phase: 0, result: null, flips: null, label: "" };
+
+function freshCopies() {
+  return Array.from({ length: DEMO.fc }, () => encodeValue32(CLUSTER_VAL).slice());
+}
+
+function drawBits(words, flipped, corrected) {
+  // 4 words of 15 bits; cell = 8 px + 2 gap; word gap = 16 px
+  let s = `<g>`;
+  const x0 = 78, cellW = 10, wordW = 15 * cellW - 2, wordGap = 16;
+  words.forEach((w, wi) => {
+    const ox = x0 + wi * (wordW + wordGap);
+    for (let bit = 0; bit < 15; bit++) {
+      const on = b(w, bit);
+      const isParity = (bit === 0 || bit === 1 || bit === 3 || bit === 7);
+      let fill = on ? (isParity ? "var(--journal)" : "var(--accent)") : "#241b14";
+      if (flipped && flipped[wi] && flipped[wi].has(bit)) fill = "var(--bad)";
+      if (corrected && corrected[wi] === bit) fill = "var(--good)";
+      s += `<rect x="${ox + bit * cellW}" y="0" width="8" height="16" fill="${fill}" rx="2"/>`;
+    }
+    s += `<text x="${ox - 6}" y="12" fill="var(--muted)" font-size="10" text-anchor="end">w${wi}</text>`;
+    s += `<text x="${ox + wordW / 2}" y="30" fill="#a08c78" font-size="9" text-anchor="middle" font-family="monospace">0x${w.toString(16).padStart(4, "0")}</text>`;
+  });
+  s += `</g>`;
+  return s;
+}
+
+function upsetRender() {
+  if (!upset.copies) upset.copies = freshCopies();
+  const phase = upset.phase; // 0 idle, 1 injected, 2 reading, 3 decoded, 4 voted, 5 outcome
+  let svg = `<svg viewBox="0 0 ${W} 416" width="${W}">`;
+  svg += `<text x="20" y="24" fill="var(--muted)" font-size="12" font-weight="700">One FAT entry (C5 → cluster 10) stored in ${DEMO.fc} copies — 4 Hamming(15,11) words each, coral = data bits, blue = parity bits</text>`;
+
+  const decoded = [];
+  for (let r = 0; r < DEMO.fc; r++) {
+    const y = 50 + r * 44;
+    const words = upset.copies[r];
+    const d = phase >= 3 ? decodeWords32(words) : null;
+    if (d) decoded.push(d);
+    const hot = phase === 2;
+    svg += `<text x="20" y="${y + 13}" fill="var(--fat)" font-size="12" font-weight="700">FAT ${r}</text>`;
+    svg += `<g transform="translate(0,${y})"${hot ? ' class="pulse"' : ""}>${drawBits(words, upset.flips ? upset.flips[r] : null, d ? d.correctedBits : null)}</g>`;
+    if (phase >= 3) {
+      const good = d.value === CLUSTER_VAL;
+      svg += `<text x="740" y="${y + 13}" fill="${good ? "var(--good)" : "var(--bad)"}" font-size="12" font-family="monospace" font-weight="700">0x${d.value.toString(16).padStart(8, "0")}${d.correctedCount ? "  (bits corrected)" : ""}</text>`;
+    }
+    if (phase >= 4 && d) {
+      const isWinner = d.value === upset.result.value;
+      svg += `<text x="920" y="${y + 13}" fill="${isWinner ? "var(--good)" : "#a08c78"}" font-size="12" font-weight="700">${isWinner ? "vote ✓" : "loses"}</text>`;
+    }
+  }
+
+  // voting panel
+  if (phase >= 4) {
+    svg += `<rect x="20" y="272" width="${W - 40}" height="64" rx="8" fill="#140f0c" stroke="#453125"/>`;
+    const tally = {};
+    decoded.forEach(d => { tally[d.value] = (tally[d.value] || 0) + 1; });
+    const lines = Object.entries(tally);
+    svg += `<text x="40" y="296" fill="var(--muted)" font-size="11" font-weight="700">VOTE (read_fat — majority, wrong-counter over ${DEMO.fc} copies)</text>`;
+    let tx = 40;
+    lines.forEach(([v, n]) => {
+      const t = `0x${Number(v).toString(16).padStart(8, "0")} × ${n}`;
+      svg += `<text x="${tx}" y="318" fill="var(--text)" font-size="12" font-family="monospace">${t}</text>`;
+      tx += t.length * 7.4 + 18;
+    });
+    const good = upset.result.value === CLUSTER_VAL;
+    svg += `<text x="40" y="330" fill="${good ? "var(--good)" : "var(--bad)"}" font-size="12" font-weight="700" font-family="monospace">winner = 0x${upset.result.value.toString(16).padStart(8, "0")} → ${good ? "correct value" : "CORRUPTED value"} · wrong = ${upset.result.wrong}</text>`;
+  }
+
+  // outcome banner
+  if (phase >= 5) {
+    const good = upset.result.value === CLUSTER_VAL;
+    const noWrite = upset.result.wrong === 0;
+    svg += `<rect x="20" y="350" width="${W - 40}" height="56" rx="8" fill="${good ? "rgba(34,197,94,.12)" : "rgba(239,68,68,.12)"}" stroke="${good ? "var(--good)" : "var(--bad)"}"/>`;
+    svg += `<text x="40" y="374" fill="${good ? "var(--good)" : "var(--bad)"}" font-size="14" font-weight="700">${good ? "✓ Entry survived" : "✗ Entry corrupted"}</text>`;
+    let msg;
+    if (good && noWrite) msg = `All copies decoded to the same value (wrong = 0), so no disk write was needed. The flipped bit stays in the copy on disk, but it is correctable by the parity bits.`;
+    else if (good) msg = `Repair: the winning value was written back to all ${DEMO.fc} copies (${DEMO.fc} disk writes) — the entry is identical everywhere again.`;
+    else msg = `The event corrupted a strict majority of the copies; the vote adopted the wrong value and wrote it to all copies. This is the designed MEU failure threshold.`;
+    svg += `<text x="40" y="394" fill="var(--muted)" font-size="12">${msg}</text>`;
+  }
+  svg += `</svg>`;
+
+  const side = `
+    <div class="panel">
+      <h3>Inject an upset</h3>
+      <div class="subbtns">
+        <button id="u-seu">SEU: 1 bit in FAT 3</button>
+        <button id="u-2bit">2 bits in FAT 3 (uncorrectable)</button>
+        <button id="u-scratch">MEU scratch: FATs 1–4</button>
+        <button id="u-reset">Reset</button>
+      </div>
+      <div id="u-status" style="font-size:12.5px;color:var(--muted);margin-top:6px">${upsetStatus()}</div>
+    </div>
+    <div class="panel">
+      <h3>What the layers do</h3>
+      <table>
+        <tr><td>Hamming(15,11)</td><td>fixes 1 flipped bit per byte, inside one copy</td></tr>
+        <tr><td>Murmur3 (BS/entries)</td><td>makes a bad copy untrusted</td></tr>
+        <tr><td>${DEMO.fc}-copy vote</td><td>repairs wrong values from the majority</td></tr>
+        <tr><td>Scatter (mix32)</td><td>copies are far apart → scratches hit few</td></tr>
+      </table>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">
+        2 bits in one byte defeat the Hamming word → that copy decodes to a wrong value and loses the vote.
+        A scratch wide enough to corrupt the majority of all copies defeats the vote — the failure the design is sized against.
+      </div>
+    </div>`;
+  return { svg, caption: upsetCaption(), side };
+}
+
+function upsetStatus() {
+  if (upset.phase === 0) return "Clean copies. Inject an upset, then walk through read → decode → vote → outcome.";
+  if (upset.phase === 1) return "Upset injected (" + upset.label + "). Click Next to run the read sequence (or Play).";
+  if (upset.phase === 2) return "Reading all " + DEMO.fc + " copies…";
+  if (upset.phase === 3) return "Hamming-decoded. Values that differ from the winner will lose the vote.";
+  if (upset.phase === 4) return "Vote done: " + (upset.result.value === CLUSTER_VAL ? "the correct value wins." : "a corrupted value wins!");
+  if (upset.phase === 5) return upset.result.value === CLUSTER_VAL
+    ? (upset.result.wrong === 0 ? "Read correctly — no disk write was needed." : "Repaired: winner rewritten to all copies.")
+    : "Corrupted: the wrong value was written to all copies. Reset and try a smaller event.";
+  return "";
+}
+function upsetCaption() {
+  const p = upset.phase;
+  if (p === 0) return `Each copy stores the 4-byte FAT value as 4 Hamming(15,11) words. The value here: <b>C5 → cluster 10</b> (0x0000000A).`;
+  if (p === 1) return `Upset injected (${upset.label}). Now the library reads entry C5 — exactly what read_fat() does on a cache miss.`;
+  if (p === 2) return `Reading the same entry from all ${DEMO.fc} copies: ${DEMO.fc} disk reads, one per copy.`;
+  if (p === 3) return `Each decoded word is checked: a single flipped bit is corrected by the parity bits (green). A double-flip decodes to a <b>wrong value</b> — indistinguishable from a real one.`;
+  if (p === 4) {
+    const good = upset.result.value === CLUSTER_VAL;
+    return good ? `The vote adopts the correct value; the disagreeing copy(ies) are counted as wrong (${upset.result.wrong}).`
+      : `The scratch corrupted the value in a majority of the copies — the vote adopts the <b>corrupted</b> value. This is the designed failure threshold for MEU.`;
+  }
+  const good = upset.result.value === CLUSTER_VAL;
+  return good ? (upset.result.wrong === 0
+    ? `Every copy decoded to the correct value, so read_fat() returns it with no write-back. The flipped bit remains on disk — it is correctable.`
+    : `Repair: the winning value is written back to all ${DEMO.fc} copies (${DEMO.fc} disk writes). The entry is identical everywhere again.`)
+    : `The library writes the (wrong) majority value to all copies. The entry is now permanently wrong — the fault is registered, but the data is lost.`;
+}
+
+function hamDecodeAll(words) { return decodeWords32(words); } // kept for clarity
+
+function randomBit() { return Math.floor(Math.random() * 15); }
+function inject(label, mut) {
+  stop();
+  const copies = freshCopies();
+  const flips = Array.from({ length: DEMO.fc }, () => Array.from({ length: 4 }, () => new Set()));
+  mut(copies, flips);
+  upset = { copies, phase: 1, result: null, flips, label };
+  render();
+}
+function applyUpsetPhase() {
+  if (upset.phase === 0) return;
+  if (upset.phase === 1) { upset.phase = 2; render(); return; }
+  if (upset.phase === 2) { upset.phase = 3; render(); return; }
+  if (upset.phase === 3) {
+    const decoded = upset.copies.map(c => hamDecodeAll(c).value);
+    upset.result = vote(decoded);
+    upset.phase = 4; render(); return;
+  }
+  if (upset.phase === 4) {
+    if (upset.result.wrong > 0) {
+      // read_fat() rewrites the winner to every copy
+      const enc = encodeValue32(upset.result.value);
+      upset.copies = Array.from({ length: DEMO.fc }, () => enc.slice());
+    }
+    upset.flips = null;
+    upset.phase = 5; render();
+  }
+}
+function bindUpsetControls() {
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on("u-seu", () => inject("1 bit in FAT 3", (copies, flips) => {
+    const bit = randomBit();
+    flips[3][1].add(bit);
+    copies[3][1] ^= 1 << bit;
+  }));
+  on("u-2bit", () => inject("2 bits in FAT 3 (uncorrectable)", (copies, flips) => {
+    // Two parity flips force a wrong decoded data bit, consistently illustrating
+    // the limit of single-error correction (and the benefit of voting).
+    const b1 = 0, b2 = 1;
+    flips[3][2].add(b1); flips[3][2].add(b2);
+    copies[3][2] ^= (1 << b1) | (1 << b2);
+  }));
+  on("u-scratch", () => inject("MEU scratch across FATs 1–4", (copies, flips) => {
+    // A deliberate worst case: the same wrong decoded byte in four copies.
+    // Independent random flips need not produce an agreeing corrupted majority.
+    for (const r of [1, 2, 3, 4]) {
+      flips[r][2].add(0); flips[r][2].add(1);
+      copies[r][2] ^= 3;
+    }
+  }));
+  on("u-reset", () => { stop(); upset = { copies: null, phase: 0, result: null, flips: null, label: "" }; render(); });
+}
+
+/* ================= Render dispatch ================= */
+const TABS = {
+  layout: { steps: layoutSteps, render: layoutRender, hint: "4 MiB · spc 8 · fc 5 · bsbc 5 · jc 2 · ec 1" },
+  mount: { steps: mountSteps, render: mountRender },
+  write: { steps: writeSteps, render: writeRender },
+  upset: { steps: [{ name: "" }], render: upsetRender }
+};
+
+function render() {
+  const t = TABS[state.tab];
+  state.step = Math.max(0, Math.min(state.step, t.steps.length - 1));
+  const out = t.render(state.step);
+  stage.innerHTML = out.svg;
+  captionEl.innerHTML = out.caption;
+  sideEl.innerHTML = out.side || "";
+  if (state.tab === "upset") {
+    controlsEl.innerHTML =
+      `<button id="prev" ${upset.phase === 0 ? "disabled" : ""}>Previous</button>
+       <button id="play" ${state.tab === "upset" && upset.phase === 0 ? "disabled" : ""}>${state.playing ? "Pause" : "Play"}</button>
+       <button id="next" ${upset.phase === 0 || upset.phase >= 5 ? "disabled" : ""}>Next</button>
+       <span class="stepno">${upset.phase === 0 ? "inject an upset to start" : "phase " + upset.phase + " / 5"}</span>`;
+    controlsEl.querySelector("#prev").onclick = () => {
+      stop();
+      if (upset.phase > 0) {
+        if (upset.phase <= 3) upset.phase--;
+        else if (upset.phase === 4) { upset.phase = 3; }
+        else { upset.phase = 0; upset.copies = freshCopies(); upset.result = null; upset.flips = null; }
+        render();
+      }
+    };
+    controlsEl.querySelector("#next").onclick = () => { stop(); applyUpsetPhase(); };
+    controlsEl.querySelector("#play").onclick = togglePlay;
+    bindUpsetControls();
+  } else {
+    controlsEl.innerHTML =
+      `<button id="prev" ${state.step === 0 ? "disabled" : ""}>Previous</button>
+       <button id="play" ${state.tab === "upset" && upset.phase === 0 ? "disabled" : ""}>${state.playing ? "Pause" : "Play"}</button>
+       <button id="next" ${state.step >= t.steps.length - 1 ? "disabled" : ""}>Next</button>
+       <span class="stepno">step ${state.step + 1} / ${t.steps.length} — ${t.steps[state.step].name}</span>
+       <span class="stepno" style="margin-left:auto">${t.hint || ""}</span>`;
+    controlsEl.querySelector("#prev").onclick = () => { stop(); state.step--; render(); };
+    controlsEl.querySelector("#next").onclick = () => { stop(); state.step++; render(); };
+    controlsEl.querySelector("#play").onclick = togglePlay;
+  }
+}
+
+render();
+</script>
+</body>
+</html>

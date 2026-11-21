@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="hero-mars-scene" class="mars-scene" viewBox="0 0 640 600" width="640" height="600" fill="none" role="img" aria-labelledby="mars-scene-title">
+  <title id="mars-scene-title">A rover driving over scrolling Martian terrain inside a microchip, with an orbiting satellite</title>
+  <defs>
+    <radialGradient id="halo"><stop stop-color="#9f3a20" stop-opacity=".22"/><stop offset="1" stop-color="#9f3a20" stop-opacity="0"/></radialGradient>
+    <linearGradient id="planet" x1="220" y1="130" x2="430" y2="470" gradientUnits="userSpaceOnUse"><stop stop-color="#ef693d"/><stop offset=".5" stop-color="#b53b24"/><stop offset="1" stop-color="#421e17"/></linearGradient>
+    <linearGradient id="chip" x1="160" y1="160" x2="510" y2="480" gradientUnits="userSpaceOnUse"><stop stop-color="#f7d7a4"/><stop offset="1" stop-color="#b58b5b"/></linearGradient>
+    <linearGradient id="orbit" x1="40" y1="400" x2="580" y2="160" gradientUnits="userSpaceOnUse"><stop stop-color="#ec6036" stop-opacity="0"/><stop offset=".5" stop-color="#f57845"/><stop offset="1" stop-color="#f3cf9a"/></linearGradient>
+    <clipPath id="disc"><circle cx="321" cy="310" r="164"/></clipPath>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0v40" stroke="#d7ac7a" stroke-opacity=".055"/></pattern>
+    <g id="orbit-satellite"><g fill="#f5d4a2"><rect x="-15" y="-27" width="30" height="48" rx="7"/><path d="M-72-20h50v33h-50zM22-20h50v33H22z"/><path d="M-22-7h7v7h-7zm37 0h7v7h-7z"/></g><g stroke="#38241b" stroke-width="2"><path d="M-55-20v33m17-33v33m-34-17h50m61-16v33m17-33v33M22-4h50"/></g><g class="scene-radio" stroke="#eaaa69" stroke-width="4"><path d="M-8 30q8 7 16 0m-25 9q17 15 34 0m-44 10q27 22 54 0"/></g></g>
+    <g id="terrain-far-tile"><path d="M0 336 36 310 74 326 114 282 155 306 182 292 222 325 260 303 303 330 342 307 400 336V500H0Z" fill="#852d20"/></g>
+    <g id="terrain-mid-tile"><path d="M0 377 35 357 72 365 112 343 154 364 188 349 231 374 270 350 306 365 354 351 400 377V500H0Z" fill="#5c241a"/></g>
+    <g id="terrain-near-tile"><path d="M0 407 44 390 79 399 120 379 167 402 205 388 248 409 295 385 344 399 374 392 400 407V500H0Z" fill="#381b16"/></g>
+    <g id="terrain-ground-tile"><path d="M0 428H400V500H0Z" fill="#d8532d"/><path d="m12 442 45-7 25 6-38 5zm91 24 54-13 29 7-52 15zm107-30 29-5 24 6-39 5zm93 21 31-12 45 7-26 9z" fill="#a53621"/><path d="m66 475 43-12 36 7-19 11zm170-22 26-9 30 5-12 12zM0 492h46l-22-10-24 4z" fill="#ee7441"/><path d="m172 439 9-4 14 5-12 3zm172 34 16-8 21 10-14 4z" fill="#ef8a4d"/></g>
+  </defs>
+  <rect width="640" height="600" fill="url(#grid)"/>
+  <ellipse class="scene-halo" cx="330" cy="315" rx="310" ry="280" fill="url(#halo)"/>
+  <g stroke="#e4c194" stroke-opacity=".14"><circle class="scene-radar" cx="321" cy="310" r="237" stroke-dasharray="3 9"/><path d="M321 35v530M46 310h550" stroke-dasharray="3 8"/><path d="M65 65h20m-10-10v20m480 450h20m-10-10v20M55 535h20m-10-10v20m480-460h20m-10-10v20"/></g>
+  <ellipse cx="319" cy="314" rx="294" ry="120" transform="rotate(-32 319 314)" stroke="#8f442b" stroke-opacity=".28"/>
+  <path d="M70 428C-3 393 55 288 196 194S516 87 567 128" stroke="url(#orbit)" stroke-width="2"/>
+  <g id="satellite-back" transform="translate(505 112) rotate(26)"><use href="#orbit-satellite"/></g>
+  <g stroke="url(#chip)" stroke-width="13" stroke-linecap="round"><path d="M239 104v32m55-32v32m55-32v32m55-32v32M239 483v32m55-32v32m55-32v32m55-32v32M115 227h32m-32 55h32m-32 55h32m-32 55h32M495 227h32m-32 55h32m-32 55h32m-32 55h32"/><rect x="147" y="136" width="348" height="347" rx="64" fill="#140f0d" stroke-width="9"/></g>
+  <circle cx="321" cy="310" r="164" fill="url(#planet)"/>
+  <g clip-path="url(#disc)">
+    <path d="M166 268c43-85 113-117 185-107-95-40-170 13-192 63z" fill="#ff9153" fill-opacity=".33"/>
+    <ellipse cx="251" cy="218" rx="29" ry="12" transform="rotate(-27 251 218)" fill="#9c3322" fill-opacity=".55"/><ellipse cx="364" cy="197" rx="45" ry="13" transform="rotate(19 364 197)" fill="#8e2c1e" fill-opacity=".55"/><ellipse cx="300" cy="180" rx="13" ry="5" fill="#a53924"/><ellipse cx="400" cy="248" rx="17" ry="7" transform="rotate(33 400 248)" fill="#77291d" fill-opacity=".5"/>
+    <g class="scene-terrain terrain-far"><use href="#terrain-far-tile" x="-400"/><use href="#terrain-far-tile" x="0"/><use href="#terrain-far-tile" x="400"/><use href="#terrain-far-tile" x="800"/></g>
+    <g class="scene-terrain terrain-mid"><use href="#terrain-mid-tile" x="-400"/><use href="#terrain-mid-tile" x="0"/><use href="#terrain-mid-tile" x="400"/><use href="#terrain-mid-tile" x="800"/></g>
+    <g class="scene-terrain terrain-near"><use href="#terrain-near-tile" x="-400"/><use href="#terrain-near-tile" x="0"/><use href="#terrain-near-tile" x="400"/><use href="#terrain-near-tile" x="800"/></g>
+    <g class="scene-terrain terrain-ground"><use href="#terrain-ground-tile" x="-400"/><use href="#terrain-ground-tile" x="0"/><use href="#terrain-ground-tile" x="400"/><use href="#terrain-ground-tile" x="800"/></g>
+  </g>
+  <g stroke="#f5d4a2" stroke-width="2" stroke-opacity=".75"><path d="m185 334 57-66 122-43 73 108-195-65"/><path d="m364 225 73 108"/></g><g class="scene-nodes" fill="#f5d4a2"><circle cx="185" cy="334" r="7"/><circle cx="242" cy="268" r="8"/><circle cx="364" cy="225" r="8"/><circle cx="437" cy="333" r="7"/></g>
+  <g class="scene-telemetry" stroke="#ffe6bb" stroke-width="2.5" stroke-dasharray="5 42" stroke-linecap="round"><path d="m185 334 57-66 122-43 73 108-195-65"/><path d="m364 225 73 108"/></g>
+  <g transform="translate(246 339)"><g class="scene-rover"><path d="m28 65 45-1 17 10H12z" fill="#c19a65"/><path d="M15 61c0-12 8-19 19-19h45c11 0 18 8 18 19v8H15z" fill="#f5d4a2"/><path d="M69 42V12" stroke="#f5d4a2" stroke-width="6"/><rect x="55" y="0" width="29" height="17" rx="4" fill="#f5d4a2"/><circle cx="64" cy="8" r="3.5" fill="#19120e"/><circle cx="76" cy="8" r="3.5" fill="#19120e"/><path d="M29 42V24" stroke="#f5d4a2" stroke-width="3"/><circle cx="29" cy="23" r="4" fill="#f5d4a2"/><g fill="#f5d4a2" stroke="#301c14" stroke-width="3"><circle cx="20" cy="76" r="13"/><circle cx="56" cy="76" r="13"/><circle cx="92" cy="76" r="13"/></g><g fill="#302016"><circle cx="20" cy="76" r="6"/><circle cx="56" cy="76" r="6"/><circle cx="92" cy="76" r="6"/></g><g transform="translate(20 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g><g transform="translate(56 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g><g transform="translate(92 76)"><g class="scene-wheel" stroke="#f5d4a2" stroke-width="1.5" stroke-opacity=".7"><path d="M-5 0H5M0-5V5"/></g></g></g></g>
+  <path d="M567 128c71 32-11 148-163 244S74 481 51 438" stroke="url(#orbit)" stroke-width="2.5"/>
+  <g id="satellite-front" transform="translate(505 112) rotate(26)" visibility="hidden"><use href="#orbit-satellite"/></g>
+  <g font-family="monospace" font-size="10" letter-spacing="1" fill="#b09980"><path d="M128 433H79v38" fill="none" stroke="#8c6d50" stroke-opacity=".5"/><text x="33" y="488">SCATTERED COPIES</text><path d="M478 361h65v34" fill="none" stroke="#8c6d50" stroke-opacity=".5"/><text x="487" y="413">RECOVER &amp; REPAIR</text><text x="281" y="561" fill="#69584b">512 BYTES / SECTOR</text></g>
+</svg>

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NiFAT32 — Filesystem builder</title>
+<style>
+  :root {
+    --bg: #100e0d; --panel: #241b14; --panel2: #302217; --line: #453125;
+    --text: #f4dcc0; --muted: #b7a799; --accent: #ed6942; --good: #a4c69c; --bad: #ed6942; --warn: #eab308;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  header h1 { font-size: 18px; margin: 0; }
+  header h1 span { color: var(--accent); }
+  select, input[type=number] {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font: inherit;
+  }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .ctl { margin-bottom: 12px; }
+  .ctl label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .ctl label b { color: var(--text); font-weight: 600; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+  .ctl input[type=number] { width: 110px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row .ctl { flex: 1; min-width: 70px; margin-bottom: 8px; }
+  .card { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+  .card .name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .card .kv { color: var(--muted); }
+  .card .kv b { color: var(--text); font-weight: 600; }
+  .regions { margin-top: 6px; }
+  .regions div { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  canvas { display: block; width: 100%; border-radius: 8px; background: #140f0c; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .05em; }
+  .ok { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  .bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; padding: 0 20px 20px; }
+  .vlist div { padding: 4px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .bar { background: var(--panel2); border-radius: 6px; height: 18px; position: relative; overflow: hidden; margin: 4px 0 10px; }
+  .bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); opacity: .85; }
+  .bar em { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-style: normal; color: #100e0d; font-weight: 700; }
+  .statline { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+  .statline b { font-family: ui-monospace, monospace; font-weight: 600; }
+  #tip { position: fixed; pointer-events: none; background: #140f0c; border: 1px solid var(--line); border-radius: 6px;
+         padding: 6px 10px; font-size: 12px; display: none; z-index: 10; max-width: 320px; }
+</style>
+<link rel="stylesheet" href="tools.css">
+<link rel="stylesheet" href="spatial.css">
+<script src="tools.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>NiFAT32 <span>Filesystem builder</span></h1>
+  <div class="ctl" style="margin:0;min-width:280px">
+    <label>Chip preset</label>
+    <select id="chip" style="width:100%"></select>
+  </div>
+</header>
+
+<main>
+  <div>
+    <div class="panel">
+      <h2>Chip</h2>
+      <div id="chipcard"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Volume on chip</h2>
+      <div class="ctl">
+        <label>Volume offset in flash <b id="offhex"></b></label>
+        <input type="range" id="offset">
+      </div>
+      <div class="ctl">
+        <label>Volume size <b id="sizeml"></b></label>
+        <input type="range" id="size">
+      </div>
+      <div class="note" id="freespace"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Volume geometry</h2>
+      <div class="row">
+        <div class="ctl"><label>spc</label><select id="spc"></select></div>
+        <div class="ctl"><label>FAT copies</label><select id="fc"></select></div>
+        <div class="ctl"><label>BS copies</label><select id="bsbc"></select></div>
+        <div class="ctl"><label>Journals</label><select id="jc"></select></div>
+        <div class="ctl"><label>Errors</label><select id="ec"></select></div>
+      </div>
+      <div class="ctl">
+        <label>Allocator pool (ALLOC_BUFFER_SIZE, bytes) <input type="number" id="alloc" value="512000" min="0" step="4096"></label>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px">
+          <input type="checkbox" id="nomm" style="accent-color:var(--accent)"> custom allocator (NO_DEFAULT_MM_MANAGER)
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <section class="panel spatial-panel" aria-labelledby="spatial-title">
+      <div class="spatial-heading"><div><h2 id="spatial-title">Spatial placement &amp; particle beam</h2><p>Where do redundant copies land, and can one localized event intersect them?</p></div><span class="mapping-badge" id="mapping-badge">MODEL</span></div>
+      <div class="spatial-toolbar">
+        <div class="ctl"><label for="spatial-layout">Address-to-position mapping</label><select id="spatial-layout"><option value="raster">Rows, left to right</option><option value="snake">Serpentine rows</option></select></div>
+        <div class="ctl"><label for="spatial-filter">Highlight structures</label><select id="spatial-filter"><option value="all">All metadata</option><option value="fat">FAT copies</option><option value="bs">Boot copies</option><option value="journal">Journals</option><option value="error">Error storage</option></select></div>
+      </div>
+      <div class="spatial-workspace">
+        <div class="spatial-map">
+          <canvas id="spatialcv" width="600" height="600" tabindex="0" aria-describedby="spatial-instructions" aria-label="Square flash map with metadata copies and movable particle beam"></canvas>
+          <p id="spatial-instructions" class="note">Drag the beam onto the chip. Arrow keys move it; Shift moves faster. Select a copy below to locate its full footprint.</p>
+          <div id="spatial-inspect" class="spatial-inspect">Point at a tile to inspect its flash address and copy membership.</div>
+        </div>
+        <div class="beam-settings">
+          <h3>Localized event</h3>
+          <div class="ctl"><label for="beam-shape">Footprint</label><select id="beam-shape"><option value="spot">Circular beam spot</option><option value="track">Particle track</option></select></div>
+          <div class="ctl"><label for="beam-radius"><span id="beam-radius-name">Radius</span> <b id="beam-radius-label"></b></label><input type="range" id="beam-radius" min="1" max="100" step="1" value="8"></div>
+          <div class="ctl"><label for="beam-x">Center X <b id="beam-x-label"></b></label><input type="range" id="beam-x" min="0" max="100" value="50"></div>
+          <div class="ctl"><label for="beam-y">Center Y <b id="beam-y-label"></b></label><input type="range" id="beam-y" min="0" max="100" value="50"></div>
+          <div class="ctl" id="beam-angle-control" hidden><label for="beam-angle">Track angle <b id="beam-angle-label"></b></label><input type="range" id="beam-angle" min="0" max="179" value="30"></div>
+          <div class="beam-actions"><button type="button" id="beam-target">Center on a FAT copy</button><button type="button" id="beam-toggle" aria-pressed="true">Hide beam</button></div>
+          <div id="beam-summary" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+      <div id="spatial-legend" class="legend"></div>
+      <p id="spatial-separation" class="spatial-separation"></p>
+      <div id="spatial-copies" class="spatial-copies" aria-label="Locate a metadata copy"></div>
+      <p id="mapping-description" class="mapping-description"></p>
+      <details class="mapping-details"><summary>Use measured address-to-position coordinates</summary><p>For a specific die, import its address ranges and physical rectangles as JSON. Coordinates apply to the memory array, with Y increasing downwards. Beam intersection exposes the whole tile; smaller ranges give finer analysis.</p><div class="mapping-actions"><label class="file-button" for="physical-map-file">Import coordinate map</label><input id="physical-map-file" class="map-file" type="file" accept=".json,application/json"><button id="export-physical-map" type="button">Export current map</button><button id="reset-physical-map" type="button" hidden>Use grid model</button></div><p id="physical-map-status" role="status"></p><p class="note">Format: <code>{version:1, chipId, flashSize, source, unit, width, height, regions:[{start,size,x,y,width,height}]}</code>. Offsets and sizes are bytes relative to flash start; rectangles must fit inside the array and address ranges must cover the flash exactly. Export a grid model for a complete example.</p></details>
+      <p class="spatial-method">Intersection marks an exposed address range, not proven bit corruption. FAT and journal voting is per entry; intersecting several copies does not by itself prove recovery will fail.</p>
+    </section>
+
+    <details class="panel linear-flash" style="margin-top:16px;margin-bottom:16px"><summary>Linear address map &amp; partitions</summary>
+    <div class="panel" style="margin-bottom:16px">
+      <h2 id="chiptitle">Chip flash</h2>
+      <canvas id="chipcv" height="120"></canvas>
+      <div class="legend" id="chiplegend"></div>
+    </div>
+    </details>
+
+    <div class="panel">
+      <h2>Volume: sector map</h2>
+      <canvas id="imgcv" height="150"></canvas>
+      <div class="row" style="margin-top:10px">
+        <div class="ctl"><label>Zoom <b id="zoomlbl"></b></label><input type="range" id="zoom"></div>
+        <div class="ctl" style="flex:2"><label>Pan <b id="panlbl"></b></label><input type="range" id="pan"></div>
+      </div>
+      <div class="legend" id="imglegend"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Scattered structures</h2>
+      <table id="structs"></table>
+    </div>
+  </div>
+</main>
+
+<div class="bottom">
+  <div class="panel">
+    <h2>Geometry</h2>
+    <div id="stats"></div>
+  </div>
+  <div class="panel">
+    <h2>Validation</h2>
+    <div class="vlist" id="validation"></div>
+  </div>
+  <div class="panel">
+    <h2>On-chip budget</h2>
+    <div id="budget"></div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+"use strict";
+
+/* ================= NiFAT32 geometry =================
+   JS port of include/nft32/addresses.h + formatter/nifat32formatter.c:
+     RESERVED_SECTORS = 32, root dir = cluster 2,
+     first_data_sector = 32 + fc * fat_size,
+     cluster n -> sector (n-2)*spc + first_data_sector,
+     boot    i:  2 + mix32(i + BOOT_SEED)    % (ts-2)
+     journal i:  2 + mix32(i + JOURNAL_SEED) % (ts-2)
+     error   i:  2 + mix32(i + ERRORS_SEED)  % (ts-2)
+     fat     i:  55 + mix32(i + FAT_SEED)    % (ts-23)   (32 reserved + 23 + mix)
+   Each FAT copy stores the Hamming-encoded table: 2 * fat_size sectors.
+   Each boot copy occupies 1 sector; journal/error areas are spc sectors.   */
+const BOOT_SEED = 0xA341316C, FAT_SEED = 0xC8013EA4, JOURNAL_SEED = 0xAD90777D, ERRORS_SEED = 0x7E95761E;
+function mix32(x) {
+  x = (x >>> 0) ^ (x >>> 16); x = Math.imul(x, 0x7FEB352D);
+  x ^= x >>> 15;              x = Math.imul(x, 0x846CA68B);
+  x ^= x >>> 16; return x >>> 0;
+}
+const bootSec = (i, ts)    => 2  + mix32((i + BOOT_SEED)    >>> 0) % (ts - 2);
+const journalSec = (i, ts) => 2  + mix32((i + JOURNAL_SEED) >>> 0) % (ts - 2);
+const errorSec  = (i, ts)  => 2  + mix32((i + ERRORS_SEED)  >>> 0) % (ts - 2);
+const fatSec    = (i, ts)  => 55 + mix32((i + FAT_SEED)     >>> 0) % (ts - 23);
+
+function calcFatSize(ts, fc, spc) {
+  const data = ts - 32;
+  let f = 0, prev = -1;
+  for (let i = 0; i < 64 && f !== prev; i++) {
+    prev = f;
+    const c = Math.floor((data - fc * f) / spc);
+    f = Math.ceil(c * 4 / 512);
+  }
+  return f;
+}
+
+function buildGeometry(p) {
+  const ts = Math.max(1, Math.round(p.sizeMB * 1024 * 1024 / 512));
+  const fatSize = calcFatSize(ts, p.fc, p.spc);
+  const firstData = 32 + p.fc * fatSize;
+  const totalClusters = Math.floor((ts - 32 - p.fc * fatSize) / p.spc);
+  const structs = [];
+  for (let i = 0; i < p.bsbc; i++) structs.push({ kind: "bs",      i, sec: bootSec(i, ts),    size: 1 });
+  for (let i = 0; i < p.fc;   i++) structs.push({ kind: "fat",     i, sec: fatSec(i, ts),      size: 2 * fatSize });
+  for (let i = 0; i < p.jc;   i++) structs.push({ kind: "journal", i, sec: journalSec(i, ts),  size: p.spc });
+  for (let i = 0; i < p.ec;   i++) structs.push({ kind: "error",   i, sec: errorSec(i, ts),    size: p.spc });
+  return { ts, fatSize, firstData, totalClusters, structs, spc: p.spc, fc: p.fc };
+}
+
+function buildMap(g) {
+  const t = new Uint8Array(g.ts);
+  for (let s = 0; s < 2 && s < g.ts; s++) t[s] = 1;
+  for (let s = 2; s < 32 && s < g.ts; s++) t[s] = 2;
+  for (let s = 32; s < g.firstData && s < g.ts; s++) t[s] = 3;
+  for (let s = g.firstData; s < g.ts; s++) t[s] = 4;
+  for (let s = g.firstData; s < g.firstData + g.spc && s < g.ts; s++) t[s] = 5;
+  const TYPE = { fat: 10, bs: 20, journal: 30, error: 40 };
+  let overlaps = 0;
+  for (const st of g.structs) {
+    st.over = st.sec + st.size > g.ts;
+    const type = TYPE[st.kind] + st.i;
+    for (let s = st.sec; s < st.sec + st.size && s < g.ts; s++) {
+      if (t[s] > 5) overlaps++;
+      t[s] = type;
+    }
+  }
+  return { t, overlaps };
+}
+
+/* ================= Chip presets =================
+   Flash layouts:
+     ESP32/S3/C3 - ESP-IDF single factory app layout: partition table at 0x8000, app at 0x10000
+     nRF52       - 4 KiB flash pages, app after bootloader
+     STM32F407   - RM0090: 4x16K + 64K + 7x128K sectors
+     STM32F767   - RM0410 single bank: 4x32K + 128K + 7x256K
+     RP2040      - Pico 2 MB QSPI flash at 0x14000000
+     ATmega2560  - 256 KiB, 256 B erase/program pages, example 4 KiB boot section     */
+const KiB = 1024, MiB = 1024 * 1024;
+const CHIPS = [
+  {
+    id: "esp32", name: "ESP32 (WROOM-32)", core: "Dual-core Xtensa LX6 @ 240 MHz",
+    flash: { size: 4 * MiB, base: 0x40000000, kind: "External SPI NOR (W25Q32), XIP", page: 256, erase: 4 * KiB, eraseNote: "4 KiB sector / 32 KiB block erase" },
+    ram: { size: 520 * KiB, note: "520 KiB SRAM, 448 KiB ROM" },
+    regions: [
+      { name: "Partition table", off: 0x8000,   size: 0x1000,  color: "#8b5cf6" },
+      { name: "Factory app",     off: 0x10000,  size: 1 * MiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 0x210000,
+    notes: "The volume is a data partition placed after the app. Everything is executed/read through the XIP alias, so keep the app region intact."
+  },
+  {
+    id: "esp32s3", name: "ESP32-S3 (WROOM-1 N8)", core: "Dual-core Xtensa LX7 @ 240 MHz",
+    flash: { size: 8 * MiB, base: 0x40000000, kind: "External SPI NOR (W25Q64), XIP", page: 256, erase: 4 * KiB, eraseNote: "4 KiB sector / 32 KiB block erase" },
+    ram: { size: 512 * KiB, note: "512 KiB SRAM (PSRAM optional)" },
+    regions: [
+      { name: "Partition table", off: 0x8000,  size: 0x1000,  color: "#8b5cf6" },
+      { name: "Factory app",     off: 0x10000, size: 2 * MiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 0x210000,
+    notes: "Same ESP-IDF layout as ESP32 with an 8 MB part; the volume can hold ~5.7 MB by default."
+  },
+  {
+    id: "esp32c3", name: "ESP32-C3 (MINI)", core: "RISC-V single-core @ 160 MHz",
+    flash: { size: 4 * MiB, base: 0x40000000, kind: "External SPI NOR, XIP", page: 256, erase: 4 * KiB, eraseNote: "4 KiB sector / 32 KiB block erase" },
+    ram: { size: 400 * KiB, note: "400 KiB SRAM" },
+    regions: [
+      { name: "Partition table", off: 0x8000,  size: 0x1000,  color: "#8b5cf6" },
+      { name: "Factory app",     off: 0x10000, size: 1 * MiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 0x210000,
+    notes: "Low-cost RISC-V part; 400 KiB of SRAM limits the allocator pool unless a custom allocator is used."
+  },
+  {
+    id: "nrf52840", name: "nRF52840", core: "Cortex-M4F @ 64 MHz",
+    flash: { size: 1 * MiB, base: 0x0, kind: "Internal flash, 4 KiB pages", page: 4 * KiB, erase: 4 * KiB, eraseNote: "256 x 4 KiB pages" },
+    ram: { size: 256 * KiB, note: "256 KiB SRAM" },
+    regions: [
+      { name: "Bootloader", off: 0,       size: 32 * KiB, color: "#a08c78" },
+      { name: "App",        off: 32 * KiB, size: 256 * KiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 320 * KiB,
+    notes: "Internal flash: the volume lives behind the app and must stay page-aligned. 4 KiB erase means partial pages cannot be reused."
+  },
+  {
+    id: "nrf52832", name: "nRF52832", core: "Cortex-M4F @ 64 MHz",
+    flash: { size: 512 * KiB, base: 0x0, kind: "Internal flash, 4 KiB pages", page: 4 * KiB, erase: 4 * KiB, eraseNote: "128 x 4 KiB pages" },
+    ram: { size: 128 * KiB, note: "128 KiB SRAM" },
+    regions: [
+      { name: "Bootloader", off: 0,      size: 32 * KiB,  color: "#a08c78" },
+      { name: "App",        off: 32 * KiB, size: 192 * KiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 224 * KiB,
+    notes: "The tightest popular target: ~128 KiB left for the volume, so keep the FAT copy count low."
+  },
+  {
+    id: "stm32f407", name: "STM32F407", core: "Cortex-M4F @ 168 MHz",
+    flash: { size: 1 * MiB, base: 0x08000000, kind: "Internal flash, 12 sectors", page: 128, erase: 16 * KiB, eraseNote: "4x16K + 64K + 7x128K sectors (RM0090)", sectors: [16,16,16,16,64,128,128,128,128,128,128,128].map(k => k * KiB) },
+    ram: { size: 128 * KiB, note: "112 KiB SRAM1 + 16 KiB SRAM2 (+ 64 KiB CCM)" },
+    regions: [
+      { name: "Bootloader", off: 0,         size: 16 * KiB,  color: "#a08c78" },
+      { name: "App",        off: 16 * KiB,  size: 256 * KiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 272 * KiB,
+    notes: "Erase granularity grows with the address (16 K -> 128 K), so the volume should be placed on a 128 K sector boundary for clean reformat."
+  },
+  {
+    id: "stm32f767", name: "STM32F767", core: "Cortex-M7 @ 216 MHz",
+    flash: { size: 2 * MiB, base: 0x08000000, kind: "Internal flash, single bank, 12 sectors", page: 128, erase: 32 * KiB, eraseNote: "4x32K + 128K + 7x256K sectors (RM0410)", sectors: [32,32,32,32,128,256,256,256,256,256,256,256].map(k => k * KiB) },
+    ram: { size: 512 * KiB, note: "368 KiB SRAM1 + 128 KiB DTCM + 16 KiB SRAM2 (+ 16 KiB ITCM)" },
+    regions: [
+      { name: "Bootloader", off: 0,         size: 32 * KiB,  color: "#a08c78" },
+      { name: "App",        off: 32 * KiB,  size: 512 * KiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 544 * KiB,
+    notes: "Fastest preset: 216 MHz Cortex-M7 with ART accelerator; ~480 KiB left for the volume by default."
+  },
+  {
+    id: "rp2040", name: "RP2040 (Pico)", core: "Dual-core M0+ @ 133 MHz",
+    flash: { size: 2 * MiB, base: 0x14000000, kind: "External QSPI NOR (GD25Q16), XIP", page: 256, erase: 4 * KiB, eraseNote: "256 B page, 4 KiB sector / 32 KiB block erase" },
+    ram: { size: 264 * KiB, note: "256 KiB SRAM + 8 KiB (PIO/USB)" },
+    regions: [
+      { name: "Boot header", off: 0,        size: 4 * KiB,   color: "#a08c78" },
+      { name: "App",         off: 4 * KiB,  size: 256 * KiB, color: "#8ea9b7" },
+    ],
+    fsOffset: 260 * KiB,
+    notes: "No flash on the die itself; the QSPI part is memory-mapped at 0x14000000. The first 256 B hold the pico-sdk boot header."
+  },
+  {
+    id: "atmega2560", name: "ATmega2560", core: "AVR 8-bit @ 16 MHz",
+    flash: { size: 256 * KiB, base: 0x0, kind: "Internal program flash, 256 B pages", page: 256, erase: 256, eraseNote: "1024 x 256 B pages (128 words per page)" },
+    ram: { size: 8 * KiB, note: "8 KiB SRAM; 4 KiB EEPROM is separate" },
+    regions: [
+      { name: "App",  off: 0,          size: 188 * KiB, color: "#8ea9b7" },
+      { name: "Boot", off: 252 * KiB,  size: 4 * KiB,   color: "#a08c78" },
+    ],
+    fsOffset: 192 * KiB,
+    notes: "8-bit AVR with 8 KiB of SRAM: the default 500 KiB allocator pool must be replaced (NO_DEFAULT_MM_MANAGER) and the volume kept under ~60 KiB."
+  }
+];
+
+/* ================= UI state ================= */
+const $ = id => document.getElementById(id);
+const state = {
+  chip: CHIPS[0],
+  offset: CHIPS[0].fsOffset,
+  sizeMB: 1,
+  spc: 8, fc: 5, bsbc: 5, jc: 2, ec: 1,
+  alloc: 512000, nomm: false,
+  zoom: 0.1, pan: 0
+};
+
+const fmtB = n => n >= 1048576 ? (n / 1048576).toFixed(2).replace(/\.?0+$/, "") + " MiB"
+             : n >= 1024 ? (n / 1024).toFixed(1).replace(/\.0$/, "") + " KiB"
+             : n + " B";
+const hex = n => "0x" + n.toString(16).toUpperCase().padStart(8, "0");
+
+/* ================= Canvas helpers ================= */
+function imgcvWidth() {
+  const cv = $("imgcv");
+  return cv.clientWidth || 900;
+}
+function setupCanvas(cv, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 900;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(cssH * dpr);
+  cv.style.height = cssH + "px";
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h: cssH };
+}
+
+const RULER = 26, BAR_TOP = 40, BAR_H = 44;
+
+function drawChip() {
+  const cv = $("chipcv");
+  const { ctx, w, h } = setupCanvas(cv, 120);
+  const ch = state.chip, f = ch.flash;
+  ctx.clearRect(0, 0, w, h);
+  const x0 = 8, x1 = w - 8, pw = x1 - x0;
+  const X = b => x0 + pw * (b / f.size);
+
+  // ruler
+  ctx.strokeStyle = "#453125"; ctx.fillStyle = "#b7a799";
+  ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center";
+  const steps = 8;
+  for (let i = 0; i <= steps; i++) {
+    const b = f.size * i / steps, x = X(b);
+    ctx.beginPath(); ctx.moveTo(x, BAR_TOP - 8); ctx.lineTo(x, BAR_TOP - 3); ctx.stroke();
+    const lbl = b === 0 ? hex(f.base) : (b / MiB) + "M";
+    if (i === 0) { ctx.textAlign = "left"; ctx.fillText(hex(f.base), x, BAR_TOP - 11); ctx.textAlign = "center"; }
+    else if (i === steps) { ctx.textAlign = "right"; ctx.fillText(hex(f.base + f.size), x, BAR_TOP - 11); ctx.textAlign = "center"; }
+    else ctx.fillText(fmtB(b), x, BAR_TOP - 11);
+  }
+
+  // flash body
+  ctx.fillStyle = "#241b14";
+  ctx.fillRect(x0, BAR_TOP, pw, BAR_H);
+
+  // erase grid
+  const sectors = f.sectors || null;
+  if (sectors) {
+    ctx.strokeStyle = "#66513e";
+    let acc = 0;
+    for (const s of sectors) {
+      acc += s;
+      if (acc >= f.size) break;
+      const x = X(acc);
+      ctx.beginPath(); ctx.moveTo(x, BAR_TOP); ctx.lineTo(x, BAR_TOP + BAR_H); ctx.stroke();
+    }
+  } else if (f.size / f.erase <= 96) {
+    ctx.strokeStyle = "#3d2e23";
+    for (let b = f.erase; b < f.size; b += f.erase) {
+      const x = X(b);
+      ctx.beginPath(); ctx.moveTo(x, BAR_TOP + BAR_H - 6); ctx.lineTo(x, BAR_TOP + BAR_H); ctx.stroke();
+    }
+  }
+
+  // regions
+  for (const r of ch.regions) {
+    ctx.fillStyle = r.color; ctx.globalAlpha = 0.85;
+    ctx.fillRect(X(r.off), BAR_TOP, X(r.off + r.size) - X(r.off), BAR_H);
+    ctx.globalAlpha = 1;
+    const rw = X(r.off + r.size) - X(r.off);
+    if (rw > 46) {
+      ctx.fillStyle = "#100e0d"; ctx.font = "bold 10px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(r.name, X(r.off + r.size / 2), BAR_TOP + BAR_H / 2 + 3);
+    }
+  }
+
+  // NiFAT32 volume
+  const off = state.offset, size = Math.round(state.sizeMB * MiB);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(X(off), BAR_TOP, X(off + size) - X(off), BAR_H); ctx.clip();
+  ctx.strokeStyle = "#ed6942"; ctx.globalAlpha = 0.5;
+  for (let x = X(off) - BAR_H; x < X(off + size); x += 8) {
+    ctx.beginPath(); ctx.moveTo(x, BAR_TOP + BAR_H); ctx.lineTo(x + BAR_H, BAR_TOP); ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#ed6942"; ctx.lineWidth = 2;
+  ctx.strokeRect(X(off), BAR_TOP, X(off + size) - X(off), BAR_H);
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#ed6942"; ctx.font = "bold 10px system-ui"; ctx.textAlign = "center";
+  const vw = X(off + size) - X(off);
+  if (vw > 90) ctx.fillText("NiFAT32 volume " + fmtB(size), X(off + size / 2), BAR_TOP + BAR_H / 2 + 3);
+  else if (vw > 0) {
+    ctx.textAlign = "left";
+    ctx.fillText("NiFAT32 " + fmtB(size) + " →", X(off + size) + 4, BAR_TOP + BAR_H / 2 + 3);
+  }
+
+  $("chiptitle").textContent = `Chip flash — ${ch.name} (${fmtB(f.size)} @ ${hex(f.base)}, ${f.kind})`;
+  $("chiplegend").innerHTML =
+    ch.regions.map(r => `<span><i class="dot" style="background:${r.color}"></i>${r.name} ${hex(f.base + r.off)}–${hex(f.base + r.off + r.size)}</span>`).join("") +
+    `<span><i class="dot" style="background:#ed6942"></i>NiFAT32 volume ${hex(f.base + off)}–${hex(f.base + off + size)}</span>` +
+    `<span>${f.eraseNote} · ${sectors ? `erase sectors: ${sectors.map(fmtB).join(", ")}` : (f.size / f.erase + (f.size / f.erase <= 96 ? " erase blocks" : " erase blocks; grid too dense"))}</span>`;
+}
+
+/* ================= Volume map ================= */
+const ZONES = [
+  [0, "Lead gap (sectors 0–1)"],
+  [1, "Lead gap"], [2, "Meta zone (scattered copies may land here)"], [3, "Cluster gap (reserved prefix, no data)"],
+  [4, "Data clusters"], [5, "Root directory (cluster 2)"]
+];
+const STRUCT_COLORS = { fat: "#ed6942", bs: "#a4c69c", journal: "#8ea9b7", error: "#c19cb9" };
+const STRUCT_NAMES = { fat: "FAT copy", bs: "Boot sector", journal: "Journal", error: "Error storage" };
+
+function zoneName(type, i) {
+  if (type <= 5) return ZONES[type][1];
+  const kind = type >= 40 ? "error" : type >= 30 ? "journal" : type >= 20 ? "bs" : "fat";
+  return STRUCT_NAMES[kind] + " " + (type - { fat: 10, bs: 20, journal: 30, error: 40 }[kind] + 1);
+}
+function zoneColor(type) {
+  if (type === 0 || type === 1) return "#453125";
+  if (type === 2) return "#66513e";
+  if (type === 3) return "#57534e";
+  if (type === 4) return "#3c3025";
+  if (type === 5) return "#ca9c60";
+  const kind = type >= 40 ? "error" : type >= 30 ? "journal" : type >= 20 ? "bs" : "fat";
+  return STRUCT_COLORS[kind];
+}
+
+let G = null, M = null;
+
+function drawImage() {
+  const cv = $("imgcv");
+  const { ctx, w, h } = setupCanvas(cv, 150);
+  const g = G;
+  const vis = Math.min(g.ts, Math.floor(w / state.zoom));
+  const pan = Math.min(state.pan, Math.max(0, g.ts - vis));
+  state.pan = pan;
+  const X = s => (s - pan) * state.zoom;
+
+  ctx.clearRect(0, 0, w, h);
+  // ruler
+  ctx.strokeStyle = "#453125"; ctx.fillStyle = "#b7a799";
+  ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center";
+  const step = niceStep(vis / 8);
+  for (let s = Math.ceil(pan / step) * step; s <= pan + vis; s += step) {
+    const x = X(s);
+    ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, 18); ctx.stroke();
+    ctx.fillText(s >= 1000 ? (s / 1024).toFixed(1) + "K" : s, x, 10);
+  }
+  ctx.textAlign = "left";
+  ctx.fillText("sector " + pan + "–" + (pan + vis) + " of " + g.ts, 8, h - 6);
+
+  const top = 26, bh = h - 60;
+  for (let x = 0; x < w; x++) {
+    const s = Math.floor(pan + x / state.zoom);
+    if (s >= g.ts) break;
+    ctx.fillStyle = zoneColor(M.t[s]);
+    ctx.fillRect(x, top, Math.min(2, Math.ceil(state.zoom)), bh);
+  }
+  ctx.strokeStyle = "#100e0d"; ctx.strokeRect(0.5, top + 0.5, w - 1, bh - 1);
+
+  // structure outlines + labels
+  ctx.font = "bold 10px system-ui";
+  for (const st of g.structs) {
+    const xa = X(st.sec), xb = X(st.sec + st.size);
+    if (xb < 0 || xa > w) continue;
+    const color = STRUCT_COLORS[st.kind];
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.strokeRect(Math.max(0, xa), top, Math.min(w, xb) - Math.max(0, xa), bh);
+    ctx.lineWidth = 1;
+    if (xb - xa > 54 && st.sec >= pan) {
+      ctx.fillStyle = color;
+      ctx.fillText(STRUCT_NAMES[st.kind][0] + st.i, Math.max(2, xa + 4), top + 12);
+    }
+  }
+
+  $("panlbl").textContent = pan + "–" + (pan + vis) + " / " + g.ts;
+  $("zoomlbl").textContent = state.zoom < 1 ? state.zoom.toFixed(2) + " px/sector" : state.zoom + " px/sector";
+}
+
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 5, 10, 20, 50, 100]) if (p * m >= raw) return p * m;
+  return p * 100;
+}
+
+/* ================= Render everything ================= */
+function recompute() {
+  const p = { sizeMB: state.sizeMB, spc: state.spc, fc: state.fc, bsbc: state.bsbc, jc: state.jc, ec: state.ec };
+  G = buildGeometry(p);
+  M = buildMap(G);
+  const vis = Math.min(G.ts, Math.floor(imgcvWidth() / state.zoom));
+  state.pan = Math.min(state.pan, Math.max(0, G.ts - vis));
+  drawChip();
+  drawImage();
+  renderStructs();
+  renderStats();
+  renderValidation();
+  renderBudget();
+  window.NiFATSpatial?.update();
+}
+
+function renderChipCard() {
+  const ch = state.chip, f = ch.flash;
+  const off = state.offset, size = Math.round(state.sizeMB * MiB);
+  $("offhex").textContent = hex(off);
+  $("sizeml").textContent = fmtB(size);
+  $("chipcard").innerHTML =
+    `<div class="card">
+       <div class="name">${ch.name}</div>
+       <div class="kv">Core: <b>${ch.core}</b></div>
+       <div class="kv">Flash: <b>${fmtB(f.size)}</b> @ ${hex(f.base)} — ${f.kind}</div>
+       <div class="kv">Program page: <b>${f.page} B</b> · erase: <b>${fmtB(f.erase)}</b></div>
+       <div class="kv">RAM: <b>${fmtB(ch.ram.size)}</b> <span style="opacity:.7">(${ch.ram.note})</span></div>
+       <div class="regions">${ch.regions.map(r =>
+         `<div><i class="dot" style="background:${r.color}"></i>${r.name} <span style="color:var(--muted)">${hex(f.base + r.off)} · ${fmtB(r.size)}</span></div>`).join("")}</div>
+     </div>
+     <div class="note">${ch.notes}</div>`;
+  $("freespace").innerHTML =
+    `Volume: <b>${hex(f.base + off)}–${hex(f.base + off + size)}</b> (${fmtB(size)})<br>` +
+    `Free after volume: <b>${fmtB(Math.max(0, f.size - off - size))}</b> · free before: <b>${fmtB(off)}</b>`;
+}
+
+function renderStructs() {
+  const rows = G.structs.map(st => {
+    const end = st.sec + st.size;
+    const over = st.over;
+    const inData = st.sec < G.firstData && end > G.firstData;
+    return `<tr>
+      <td><i class="dot" style="background:${STRUCT_COLORS[st.kind]};display:inline-block"></i> ${STRUCT_NAMES[st.kind]} ${st.i}</td>
+      <td>${st.sec}–${end}</td>
+      <td>${st.size} sec (${fmtB(st.size * 512)})</td>
+      <td class="${over ? "bad" : inData ? "warn" : "ok"}">${over ? "overflows image!" : inData ? "overlaps data clusters" : "ok"}</td>
+    </tr>`;
+  }).join("");
+  $("structs").innerHTML =
+    `<tr><th>Structure</th><th>Sector range</th><th>Size</th><th>Status</th></tr>` + rows +
+    `<tr><td colspan="4" style="color:var(--muted);font-size:11.5px">Placement = 2 + mix32(i + SEED) % (ts − 2) for BS/journals/errors, 55 + mix32(i + FAT_SEED) % (ts − 23) for FATs. The formatter does not check for collisions between structures.</td></tr>`;
+}
+
+function renderStats() {
+  const consumed = new Set();
+  for (const st of G.structs) {
+    const lo = Math.max(st.sec, G.firstData), hi = Math.min(st.sec + st.size, G.ts);
+    for (let s = lo; s < hi; s++) consumed.add(Math.floor((s - G.firstData) / G.spc) + 2);
+  }
+  const free = G.totalClusters - consumed.size;
+  const lines = [
+    ["Total sectors", G.ts + " (" + fmtB(G.ts * 512) + ")"],
+    ["Sectors per cluster", G.spc + " (" + fmtB(G.spc * 512) + ")"],
+    ["FAT size", G.fatSize + " sectors (decoded) → " + 2 * G.fatSize + " sectors on disk (Hamming)"],
+    ["Total clusters", G.totalClusters],
+    ["First data sector", G.firstData],
+    ["Root directory", "cluster 2 @ sector " + G.firstData],
+    ["Clusters consumed by structures", consumed.size],
+    ["Clusters available for files", free]
+  ];
+  $("stats").innerHTML = lines.map(([k, v]) => `<div class="statline"><span style="color:var(--muted)">${k}</span><b>${v}</b></div>`).join("");
+  $("imglegend").innerHTML =
+    [
+      ["#453125", "Lead gap (0–1)"], ["#66513e", "Meta zone (2–31)"], ["#57534e", "Cluster gap"],
+      ["#3c3025", "Data clusters"], ["#ca9c60", "Root dir (cluster 2)"],
+      ["#ed6942", "FAT copies"], ["#a4c69c", "Boot sectors"], ["#8ea9b7", "Journals"], ["#c19cb9", "Error storage"]
+    ].map(([c, n]) => `<span><i class="dot" style="background:${c}"></i>${n}</span>`).join("");
+}
+
+function renderValidation() {
+  const f = state.chip.flash, off = state.offset, size = Math.round(state.sizeMB * MiB);
+  const items = [];
+  const err = (m) => items.push(`<div class="bad">✗ ${m}</div>`);
+  const warn = (m) => items.push(`<div class="warn">△ ${m}</div>`);
+  const ok = (m) => items.push(`<div class="ok">✓ ${m}</div>`);
+
+  if (G.ts < 64) err(`Image is only ${G.ts} sectors: the layout needs at least ~64 (FAT base is at sector 55).`);
+  if (G.totalClusters < 3) err(`Only ${G.totalClusters} clusters: root directory plus FAT-reserved clusters do not fit, no room for files.`);
+  for (const st of G.structs) if (st.over) err(`${STRUCT_NAMES[st.kind]} ${st.i} starts at sector ${st.sec} and runs ${st.size} sectors past the image (scattered placement can overflow the volume — the formatter does not clamp it).`);
+  if (G.totalClusters >= 3) {
+    const consumed = new Set();
+    for (const st of G.structs) {
+      const lo = Math.max(st.sec, G.firstData), hi = Math.min(st.sec + st.size, G.ts);
+      for (let s = lo; s < hi; s++) consumed.add(Math.floor((s - G.firstData) / G.spc) + 2);
+    }
+    if (G.totalClusters - consumed.size <= 0) err("All clusters are consumed by structures — no space for user data.");
+    else if (G.totalClusters - consumed.size < 10) warn("Fewer than 10 clusters left for user data.");
+  }
+  if (M.overlaps > 0) warn(`${M.overlaps} sector${M.overlaps > 1 ? "s" : ""} claimed by two structures (pseudo-random placement does not check collisions; the copies still vote, but the colliding area is ambiguous).`);
+  if (off % f.page !== 0) warn(`Volume offset is not aligned to the ${fmtB(f.page)} program page.`);
+  if (size % f.erase !== 0) warn(`Volume size is not a multiple of the ${fmtB(f.erase)} erase unit — reformatting disturbs the adjacent area.`);
+  if (off + size > f.size) err(`Volume (${fmtB(size)}) at ${hex(f.base + off)} does not fit in the ${fmtB(f.size)} flash.`);
+  for (const region of state.chip.regions) {
+    if (off < region.off + region.size && region.off < off + size)
+      err(`Volume overlaps the ${region.name} region (${hex(region.off)}–${hex(region.off + region.size)} flash offsets).`);
+  }
+  const alloc = state.nomm ? 0 : state.alloc;
+  if (alloc > state.chip.ram.size * 0.75) warn(`Allocator pool (${fmtB(alloc)}) uses most of the chip's ${fmtB(state.chip.ram.size)} RAM — lower ALLOC_BUFFER_SIZE or use a custom allocator.`);
+  if (G.fatSize * 2 * G.fc * 512 > G.ts * 512 * 0.1) warn(`FAT copies consume ${Math.round(100 * G.fatSize * 2 * G.fc / G.ts)}% of the volume — many copies on a small volume is expensive.`);
+  if (!items.length) ok("No geometry or placement problems found.");
+  $("validation").innerHTML = items.join("");
+}
+
+function renderBudget() {
+  const f = state.chip.flash, ch = state.chip;
+  const off = state.offset, size = Math.round(state.sizeMB * MiB);
+  const flashFree = Math.max(0, f.size - off - size);
+  const ROM_MIN = 6767, ROM_MAX = 65434; // 6,767 B min profile / 63.9 KiB max profile (README)
+  const ram = state.nomm ? 856 : state.alloc + 856;
+  const row = (label, used, cap, unit) => {
+    const pct = cap > 0 ? Math.min(100, 100 * used / cap) : 100;
+    const fit = used <= cap;
+    return `<div class="statline"><span style="color:var(--muted)">${label}</span>
+      <b class="${fit ? "ok" : "bad"}">${fmtB(used)} / ${fmtB(cap)} ${unit}</b></div>
+      <div class="bar"><i style="width:${pct}%;background:${fit ? "var(--accent)" : "var(--bad)"}"></i></div>`;
+  };
+  $("budget").innerHTML =
+    row("Library ROM (min profile)", ROM_MIN, flashFree, "flash left") +
+    row("Library ROM (max profile)", ROM_MAX, flashFree, "flash left") +
+    row("Static RAM (allocator + base)", ram, ch.ram.size, "chip RAM") +
+    '<div class="note">ROM = "text + data" of the stripped library; static RAM = "data + bss". Min profile = 6,767 B (minimal feature set, README footprint table); max profile = 63.9 KiB (-O0 -g3, all logging). The allocator pool is static .bss even when only part of it is used at runtime.</div>';
+}
+
+/* ================= Wiring ================= */
+function fillSelect(el, values, cur) {
+  el.innerHTML = values.map(v => `<option value="${v}" ${v === cur ? "selected" : ""}>${v}</option>`).join("");
+}
+
+function volumeLimit() {
+  const ch = state.chip;
+  const next = ch.regions.filter(region => region.off >= state.offset).map(region => region.off);
+  const end = Math.min(ch.flash.size, ...next);
+  return Math.max(0.03125, Math.min(64, Math.floor((end - state.offset) / 4096) * 4096 / MiB));
+}
+
+function setPreset(id) {
+  state.chip = CHIPS.find(c => c.id === id) || CHIPS[0];
+  $("chip").value = state.chip.id;
+  state.offset = state.chip.fsOffset;
+  const sizeEl = $("size");
+  sizeEl.max = String(volumeLimit());
+  state.sizeMB = Math.min(state.sizeMB, parseFloat(sizeEl.max));
+  sizeEl.value = String(state.sizeMB);
+  const offEl = $("offset");
+  offEl.max = String(state.chip.flash.size - state.chip.flash.page);
+  offEl.step = String(state.chip.flash.page);
+  offEl.value = String(state.offset);
+  renderChipCard();
+  recompute();
+}
+
+function init() {
+  const chipSel = $("chip");
+  const families = [["STM32", c => c.id.startsWith("stm32")], ["ESP32 · external flash", c => c.id.startsWith("esp")], ["ATmega", c => c.id.startsWith("atmega")], ["Other targets", c => !/^(stm32|esp|atmega)/.test(c.id)]];
+  chipSel.innerHTML = families.map(([label, match]) => `<optgroup label="${label}">${CHIPS.filter(match).map(c => `<option value="${c.id}">${c.name}</option>`).join("")}</optgroup>`).join("");
+  fillSelect($("spc"), [1, 2, 4, 8, 16], 8);
+  fillSelect($("fc"), [1, 2, 3, 4, 5, 6, 7, 8], 5);
+  fillSelect($("bsbc"), [1, 2, 3, 4, 5, 6, 7, 8], 5);
+  fillSelect($("jc"), [0, 1, 2, 3, 4, 5, 6, 7, 8], 2);
+  fillSelect($("ec"), [0, 1, 2, 3, 4, 5, 6, 7, 8], 1);
+
+  chipSel.onchange = () => setPreset(chipSel.value);
+  $("spc").onchange = e => { state.spc = +e.target.value; recompute(); };
+  $("fc").onchange = e => { state.fc = +e.target.value; recompute(); };
+  $("bsbc").onchange = e => { state.bsbc = +e.target.value; recompute(); };
+  $("jc").onchange = e => { state.jc = +e.target.value; recompute(); };
+  $("ec").onchange = e => { state.ec = +e.target.value; recompute(); };
+  $("alloc").oninput = e => { state.alloc = +e.target.value || 0; renderBudget(); };
+  $("nomm").onchange = e => { state.nomm = e.target.checked; renderValidation(); renderBudget(); };
+
+  const offEl = $("offset");
+  offEl.oninput = e => {
+    state.offset = +e.target.value;
+    const sizeEl = $("size");
+    sizeEl.max = String(volumeLimit());
+    state.sizeMB = Math.min(state.sizeMB, parseFloat(sizeEl.max));
+    sizeEl.value = String(state.sizeMB);
+    renderChipCard(); recompute();
+  };
+  const sizeEl = $("size");
+  sizeEl.min = "0.03125"; sizeEl.step = "0.00390625";
+  sizeEl.oninput = e => { state.sizeMB = +e.target.value; renderChipCard(); recompute(); };
+
+  const zoomEl = $("zoom");
+  zoomEl.min = "0"; zoomEl.max = "6"; zoomEl.step = "0.01"; zoomEl.value = "0";
+  zoomEl.oninput = () => {
+    const t = +zoomEl.value;
+    state.zoom = t <= 0 ? 0.1 : Math.pow(2, t * 5 / 6);
+    drawImage();
+  };
+  const panEl = $("pan");
+  panEl.min = "0"; panEl.max = "1"; panEl.step = "0.001";
+  panEl.oninput = () => {
+    const vis = Math.min(G.ts, Math.floor((imgcvWidth()) / state.zoom));
+    state.pan = Math.min(Math.floor(+panEl.value * G.ts), Math.max(0, G.ts - vis));
+    drawImage();
+  };
+
+  // tooltip
+  const tip = $("tip");
+  const imgCv = $("imgcv");
+  imgCv.addEventListener("mousemove", e => {
+    const r = imgCv.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const s = Math.floor(state.pan + x / state.zoom);
+    if (s < 0 || s >= G.ts) { tip.style.display = "none"; return; }
+    const type = M.t[s];
+    tip.innerHTML = `sector <b>${s}</b> · byte ${fmtB(s * 512)}<br>${zoneName(type, 0)}`;
+    tip.style.display = "block";
+    tip.style.left = (e.clientX + 14) + "px";
+    tip.style.top = (e.clientY + 14) + "px";
+  });
+  imgCv.addEventListener("mouseleave", () => tip.style.display = "none");
+
+  window.addEventListener("resize", () => { drawChip(); drawImage(); });
+
+  setPreset("esp32");
+}
+
+init();
+</script>
+<script src="spatial.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+{
+  "configuration": "5 boot copies, 5 FAT copies, 5 file-metadata backups; no indexing or caching",
+  "failure_metric": "Failed runs: unable to mount, or to find and read a file. Payload correctness excluded.",
+  "data_sha256": {
+    "fat32_surface_matrix_failed_runs.csv": "9d76396d72f8a84a5b40f6817865b8075dab7e375cf5a637ee936194a981ee1f",
+    "nifat32_surface_matrix_failed_runs.csv": "46e8e1cf71b715bc23e409cf5d752eef47f5348fcc715f5ba4170714d350bad8",
+    "littlefs_rs_surface_matrix_failed_runs.csv": "87aa11e2424880e160da08f545d1db473959c0c459cf57a2b1a2431356969882"
+  },
+  "operations": [
+    "Open",
+    "Create",
+    "Write",
+    "Read",
+    "Rename",
+    "Copy"
+  ],
+  "throughput_other_over_nifat32": {
+    "FAT32": [
+      16.2,
+      4.328,
+      7.152,
+      7.557,
+      3.502,
+      4.056
+    ],
+    "LittleFS": [
+      0.2871,
+      0.181,
+      0.1677,
+      0.307,
+      0.09592,
+      0.2055
+    ],
+    "YAFFS2": [
+      120.7,
+      1.205,
+      0.4619,
+      3.573,
+      1.339,
+      1.773
+    ]
+  },
+  "gross_energy_other_over_nifat32": {
+    "FAT32": [
+      0.1012,
+      0.2661,
+      0.1671,
+      0.1531,
+      0.359,
+      0.2733
+    ],
+    "LittleFS": [
+      4.28,
+      6.15,
+      7.394,
+      4.007,
+      11.6,
+      5.523
+    ],
+    "YAFFS2": [
+      0.008204,
+      0.8143,
+      2.087,
+      0.274,
+      0.7106,
+      0.5368
+    ]
+  }
+}
