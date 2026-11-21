@@ -1,8 +1,6 @@
 # NiFAT32 Formatter
 
-The formatter creates a raw NiFAT32 filesystem image. The image can be used
-in tests, opened through the NiFAT32 library, or written directly to an SD
-card or another block device.
+The formatter creates a raw NiFAT32 filesystem image. The image can be used in tests, opened through the NiFAT32 library, or written directly to an SD card or another block device.
 
 > **Important:** NiFAT32 is different from standard FAT32. Regular FAT32
 > drivers in Linux, Windows, and macOS may not recognize the image.
@@ -38,8 +36,7 @@ Create a 128 MB image and copy the contents of `../data` into it:
 ./formatter -o ../nifat32.img -s ../data --volume-size 128
 ```
 
-The directory passed with `-s` is processed recursively. Its files and
-subdirectories are added to the root directory of the new image.
+The directory passed with `-s` is processed recursively. Its files and subdirectories are added to the root directory of the new image.
 
 ## Options
 
@@ -68,13 +65,11 @@ Full example:
   --jc 2
 ```
 
-These filesystem geometry values must match the values passed to the
-NiFAT32 library when the image is opened.
+These filesystem geometry values must match the values passed to the `NiFAT32` library when the image is opened.
 
 ## Using an SD Card Image
 
-The formatter places the filesystem directly at sector zero. It does not
-create an MBR or GPT partition table.
+The formatter places the filesystem directly at sector zero. It does not create an MBR or GPT partition table.
 
 Create an image file of the required size:
 
@@ -88,13 +83,9 @@ On Linux, the resulting image can be written to an SD card with:
 sudo dd if=../sdcard.img of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
-Replace `/dev/sdX` with the actual SD card device and verify the device path
-with `lsblk` before running the command. `dd` will destroy all existing
-partitions and data on the selected device.
+Replace `/dev/sdX` with the actual SD card device and verify the device path with `lsblk` before running the command. `dd` will destroy all existing partitions and data on the selected device.
 
-Do not pass `/dev/sdX` directly to the formatter through `-o`. The formatter
-opens its output with truncation enabled and calls `ftruncate()`, so it is
-designed to create a regular image file.
+Do not pass `/dev/sdX` directly to the formatter through `-o`. The formatter opens its output with truncation enabled and calls `ftruncate()`, so it is designed to create a regular image file.
 
 ## Limitations and Safety
 
@@ -113,14 +104,11 @@ Check the size of the resulting image:
 ls -lh ../nifat32.img
 ```
 
-To open the image with the test Unix utility, run the following commands from
-the project root:
+To open the image with the test Unix utility, run the following commands from the project root:
 
 ```bash
 gcc unix_nifat32.c nifat32.c src/*.c std/*.c -Iinclude -o unix_nifat32
 ./unix_nifat32 nifat32.img 64 512 5 2
 ```
 
-The arguments `64`, `512`, `5`, and `2` specify the image size in megabytes,
-sector size, number of boot sector copies, and number of journal sectors.
-They must match the settings used to create the image.
+The arguments `64`, `512`, `5`, and `2` specify the image size in megabytes, sector size, number of boot sector copies, and number of journal sectors. They must match the settings used to create the image.
