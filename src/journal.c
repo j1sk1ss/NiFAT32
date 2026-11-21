@@ -20,8 +20,12 @@ static int __write_journal__(int index, journal_entry_t* entry, fat_data_t* fi, 
 
 static int _write_journal(int index, journal_entry_t* entry, fat_data_t* fi) {
     print_debug("_write_journal(index=%i)", index);
-    for (int i = 0; i < fi->journals_count; i++) __write_journal__(index, entry, fi, i);
-    return 1;
+    int result = 1;
+    for (int i = 0; i < fi->journals_count; i++) {
+        result = __write_journal__(index, entry, fi, i) && result;
+    }
+    
+    return result;
 }
 
 static int __read_journal__(int index, journal_entry_t* entry, fat_data_t* fi, int journal) {
