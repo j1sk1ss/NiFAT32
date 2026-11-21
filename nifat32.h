@@ -366,6 +366,8 @@ Return 0 if something goes wrong.
 */
 int NIFAT32_delete_content(ci_t ci);
 
+#define RECURSIVE_REPAIR     1
+#define NON_RECURSIVE_REPAIR 0
 /*
 Repair content by reading, unpacking (error correcting) and writing to disk.
 Note: Will read, correct and write all directry entries in content.

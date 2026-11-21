@@ -671,13 +671,13 @@ NIFAT32_repair_bootsectors(); // Rewrite all boot sector copies.
 
 ### Repair content
 
-`NIFAT32_repair_content()` reads, corrects and rewrites directory entries. Pass a nonzero second argument to visit subdirectories recursively.
+`NIFAT32_repair_content()` reads, corrects and rewrites directory entries. Pass `RECURSIVE_REPAIR` second argument to visit subdirectories recursively. Otherwise use `NON_RECURSIVE_REPAIR`.
 
 ```c
 ci_t root = NIFAT32_open_content(NO_RCI, NULL, DF_MODE);
 
 if (root >= 0) {
-    NIFAT32_repair_content(root, 1); // Recursive repair.
+    NIFAT32_repair_content(root, RECURSIVE_REPAIR); // Recursive repair.
     NIFAT32_close_content(root);
 }
 ```

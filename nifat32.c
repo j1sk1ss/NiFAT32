@@ -751,7 +751,7 @@ int NIFAT32_repair_content(const ci_t ci, int rec) {
         FS_API_RETURN_AFTER_WRITE(0);
     }
 
-    FS_API_RETURN_AFTER_WRITE(entry_iterate(get_content_data_ca(ci), rec ? _repair_handler : NULL, NULL, &_fs_data));
+    FS_API_RETURN_AFTER_WRITE(entry_iterate(get_content_data_ca(ci), rec == RECURSIVE_REPAIR ? _repair_handler : NULL, NULL, &_fs_data));
 }
 
 error_code_t NIFAT32_get_last_error() {
